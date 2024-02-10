@@ -1,0 +1,20 @@
+[package]
+name = "oku"
+edition = "2021"
+
+[dependencies]
+oku_dylib = { path = "crates/oku_dylib", default-features = true }
+oku_core = { path = "crates/oku_core", default-features = true }
+
+
+[workspace]
+resolver = "2"
+
+members = [
+    "crates/oku_core",
+    "crates/oku_dylib"
+]
+
+[[example]]
+name = "test_binary"
+path = "examples/test_binary/test_binary.rs"
