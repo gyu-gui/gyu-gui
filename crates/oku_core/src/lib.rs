@@ -25,6 +25,10 @@ use winit::keyboard::{Key, NamedKey};
 use winit::platform::modifier_supplement::KeyEventExtModifierSupplement;
 use winit::window::{Window, WindowBuilder};
 
+pub trait Application {
+    fn view(&self) -> Element;
+}
+
 pub struct Props {
     pub data: Box<dyn Any>,
 }
@@ -43,6 +47,10 @@ pub struct RenderContext {
     cursor_x: f32,
     cursor_y: f32,
     debug_draw: bool,
+
+    element_tree: Option<Element>,
+    // TODO
+    state_tree: Option<Element>,
 }
 
 struct State {
@@ -82,12 +90,12 @@ fn rgb_to_encoded_u32(r: u32, g: u32, b: u32) -> u32 {
     b | (g << 8) | (r << 16)
 }
 
-pub fn main(element: Element) {
+pub fn main(application: Box<dyn Application>) {
     let rt = tokio::runtime::Runtime::new().unwrap();
-    rt.block_on(async_main(element))
+    rt.block_on(async_main(application))
 }
 
-async fn async_main(element: Element) {
+async fn async_main(application: Box<dyn Application>) {
     let event_loop: EventLoop<ActionRequestEvent> = EventLoopBuilder::with_user_event().build().unwrap();
     let window = Rc::new(WindowBuilder::new().build(&event_loop).unwrap());
     window.set_title("Oku");
@@ -95,6 +103,8 @@ async fn async_main(element: Element) {
     let context = softbuffer::Context::new(window.clone()).unwrap();
     let surface: Surface<Rc<Window>, Rc<Window>> = Surface::new(&context, window.clone()).unwrap();
     let pixmap = Pixmap::new(100, 100).unwrap();
+
+    let mut element = application.view();
 
     let app = Rc::new(RefCell::new(RenderContext {
         font_system: FontSystem::new(),
@@ -105,15 +115,17 @@ async fn async_main(element: Element) {
         cursor_x: 0.0,
         cursor_y: 0.0,
         debug_draw: false,
+        element_tree: Some(element),
+        state_tree: None,
     }));
 
-    let state = State::new();
+    let access_kit_state = State::new();
     let adapter = {
-        let state = Arc::clone(&state);
+        let access_kit_state = Arc::clone(&access_kit_state);
         Adapter::new(
             &window,
             move || {
-                let mut state = state.lock().unwrap();
+                let mut state = access_kit_state.lock().unwrap();
                 state.build_initial_tree()
             },
             event_loop.create_proxy(),
@@ -122,12 +134,12 @@ async fn async_main(element: Element) {
 
     event_loop
         .run(move |event, event_loop_window_target| {
-            event_loop2(&window, &adapter, element.clone(), app.clone(), event, event_loop_window_target);
+            event_loop2(&window, &adapter, app.clone(), event, event_loop_window_target);
         })
         .unwrap();
 }
 
-fn event_loop2(window: &Window, adapter: &Adapter, mut root_element: Element, app: Rc<RefCell<RenderContext>>, event: Event<ActionRequestEvent>, event_loop_window_target: &EventLoopWindowTarget<ActionRequestEvent>) {
+fn event_loop2(window: &Window, adapter: &Adapter, app: Rc<RefCell<RenderContext>>, event: Event<ActionRequestEvent>, event_loop_window_target: &EventLoopWindowTarget<ActionRequestEvent>) {
     event_loop_window_target.set_control_flow(ControlFlow::Wait);
 
     let mut should_draw = false;
@@ -179,20 +191,24 @@ fn event_loop2(window: &Window, adapter: &Adapter, mut root_element: Element, ap
             if should_draw {
                 let mut window_element = Container::new();
 
+                let mut root = app.element_tree.clone().unwrap();
+
                 window_element = window_element.width(Unit::Px(window.inner_size().width as f32));
                 //window_element = window_element.height(Unit::Px(window.inner_size().height as f32));
-                let computed_style = &root_element.computed_style_mut();
+                let computed_style = &root.computed_style_mut();
 
                 // The root element should be 100% window width if the width is not already set.
                 if computed_style.width.is_auto() {
-                    root_element.computed_style_mut().width = Unit::Px(window.inner_size().width as f32);
+                    root.computed_style_mut().width = Unit::Px(window.inner_size().width as f32);
                 }
 
-                window_element = window_element.add_child(root_element);
+                window_element = window_element.add_child(root);
                 let mut window_element = Element::Container(window_element);
 
                 layout(window.inner_size().width as f32, window.inner_size().height as f32, app, &mut window_element);
                 draw(window.inner_size().width as f32, window.inner_size().height as f32, app, &mut window_element);
+
+                app.element_tree = Some(window_element);
             }
         }
         _ => {}

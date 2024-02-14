@@ -37,11 +37,19 @@ impl Component for Hello {
     }
 }
 
-fn main() {
-    let hello = Hello {};
-    let hello_props = Props {
-        data: Box::new(12_u32),
-    };
+struct App {}
 
-    oku_dylib::oku_core::main(hello.view(&hello_props));
+impl oku_core::Application for App {
+    fn view(&self) -> Element {
+        let hello = Hello {};
+        let hello_props = Props {
+            data: Box::new(12_u32),
+        };
+        hello.view(&hello_props)
+    }
+}
+
+fn main() {
+    let application = App {};
+    oku_dylib::oku_core::main(Box::new(application));
 }
