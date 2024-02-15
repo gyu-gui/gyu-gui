@@ -13,6 +13,20 @@ pub enum Element {
 }
 
 impl Element {
+    pub fn id(&self) -> u64 {
+        match self {
+            Element::Container(container) => container.id(),
+            Element::Text(text) => text.id(),
+        }
+    }
+
+    pub fn id_mut(&mut self) -> &mut u64 {
+        match self {
+            Element::Container(container) => container.id_mut(),
+            Element::Text(text) => text.id_mut(),
+        }
+    }
+
     pub fn draw(&mut self, render_context: &mut RenderContext) {
         match self {
             Element::Container(container) => container.draw(render_context),
@@ -29,6 +43,13 @@ impl Element {
         match self {
             Element::Container(container) => container.children(),
             Element::Text(text) => text.children(),
+        }
+    }
+
+    pub fn children_mut(&mut self) -> &mut Vec<Element> {
+        match self {
+            Element::Container(container) => container.children_mut(),
+            Element::Text(text) => text.children_mut(),
         }
     }
 

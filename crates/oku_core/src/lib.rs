@@ -1,4 +1,4 @@
-pub mod atomic_widget_id;
+pub mod widget_id;
 pub mod components;
 pub mod elements;
 
@@ -24,6 +24,8 @@ use winit::event_loop::{ControlFlow, EventLoop, EventLoopBuilder, EventLoopWindo
 use winit::keyboard::{Key, NamedKey};
 use winit::platform::modifier_supplement::KeyEventExtModifierSupplement;
 use winit::window::{Window, WindowBuilder};
+use crate::elements::trees::give_tree_new_ids;
+use crate::widget_id::create_unique_widget_id;
 
 pub trait Application {
     fn view(&self) -> Element;
@@ -48,9 +50,8 @@ pub struct RenderContext {
     cursor_y: f32,
     debug_draw: bool,
 
+    application: Box<dyn Application>,
     element_tree: Option<Element>,
-    // TODO
-    state_tree: Option<Element>,
 }
 
 struct State {
@@ -96,15 +97,13 @@ pub fn main(application: Box<dyn Application>) {
 }
 
 async fn async_main(application: Box<dyn Application>) {
-    let event_loop: EventLoop<ActionRequestEvent> = EventLoopBuilder::with_user_event().build().unwrap();
-    let window = Rc::new(WindowBuilder::new().build(&event_loop).unwrap());
+    let winit_event_loop: EventLoop<ActionRequestEvent> = EventLoopBuilder::with_user_event().build().unwrap();
+    let window = Rc::new(WindowBuilder::new().build(&winit_event_loop).unwrap());
     window.set_title("Oku");
 
     let context = softbuffer::Context::new(window.clone()).unwrap();
     let surface: Surface<Rc<Window>, Rc<Window>> = Surface::new(&context, window.clone()).unwrap();
     let pixmap = Pixmap::new(100, 100).unwrap();
-
-    let mut element = application.view();
 
     let app = Rc::new(RefCell::new(RenderContext {
         font_system: FontSystem::new(),
@@ -115,8 +114,8 @@ async fn async_main(application: Box<dyn Application>) {
         cursor_x: 0.0,
         cursor_y: 0.0,
         debug_draw: false,
-        element_tree: Some(element),
-        state_tree: None,
+        application,
+        element_tree: None,
     }));
 
     let access_kit_state = State::new();
@@ -128,21 +127,25 @@ async fn async_main(application: Box<dyn Application>) {
                 let mut state = access_kit_state.lock().unwrap();
                 state.build_initial_tree()
             },
-            event_loop.create_proxy(),
+            winit_event_loop.create_proxy(),
         )
     };
 
-    event_loop
+    winit_event_loop
         .run(move |event, event_loop_window_target| {
-            event_loop2(&window, &adapter, app.clone(), event, event_loop_window_target);
+            event_loop(&window, &adapter, app.clone(), event, event_loop_window_target);
         })
         .unwrap();
 }
 
-fn event_loop2(window: &Window, adapter: &Adapter, app: Rc<RefCell<RenderContext>>, event: Event<ActionRequestEvent>, event_loop_window_target: &EventLoopWindowTarget<ActionRequestEvent>) {
+fn event_loop(window: &Window, adapter: &Adapter, app: Rc<RefCell<RenderContext>>, event: Event<ActionRequestEvent>, event_loop_window_target: &EventLoopWindowTarget<ActionRequestEvent>) {
     event_loop_window_target.set_control_flow(ControlFlow::Wait);
-
     let mut should_draw = false;
+
+    // Create the first tree
+    if app.borrow_mut().element_tree.is_none() {
+        should_draw = true;
+    }
 
     match event {
         Event::WindowEvent { event, window_id } => {
@@ -189,6 +192,11 @@ fn event_loop2(window: &Window, adapter: &Adapter, app: Rc<RefCell<RenderContext
             }
 
             if should_draw {
+
+
+                let mut element = app.application.view();
+
+
                 let mut window_element = Container::new();
 
                 let mut root = app.element_tree.clone().unwrap();

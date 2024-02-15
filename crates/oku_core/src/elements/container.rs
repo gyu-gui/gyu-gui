@@ -9,9 +9,11 @@ use rand::Rng;
 use taffy::style_helpers::length;
 use taffy::{NodeId, TaffyTree};
 use tiny_skia::{LineCap, LineJoin, Paint, PathBuilder, Rect, StrokeDash, Transform};
+use crate::widget_id::create_unique_widget_id;
 
 #[derive(Clone, Default)]
 pub struct Container {
+    id: u64,
     style: Style,
     children: Vec<Element>,
     computed_x: f32,
@@ -24,6 +26,7 @@ pub struct Container {
 impl Container {
     pub fn new() -> Container {
         Container {
+            id: u64::MAX,
             style: Style {
                 ..Default::default()
             },
@@ -47,8 +50,19 @@ impl Container {
         self.children.clone()
     }
 
+    pub fn children_mut(&mut self) -> &mut Vec<Element> {
+        &mut self.children
+    }
+
     pub const fn name(&self) -> &'static str {
         "Container"
+    }
+    pub const fn id(&self) -> u64 {
+        self.id
+    }
+
+    pub fn id_mut(&mut self) -> &mut u64 {
+        &mut self.id
     }
 
     pub fn draw(&mut self, render_context: &mut RenderContext) {

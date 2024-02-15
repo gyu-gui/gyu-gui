@@ -9,9 +9,11 @@ use rand::Rng;
 use taffy::style_helpers::length;
 use taffy::{NodeId, TaffyTree};
 use tiny_skia::{LineCap, LineJoin, Paint, PathBuilder, Rect, Transform};
+use crate::widget_id::create_unique_widget_id;
 
 #[derive(Clone, Default)]
 pub struct Text {
+    id: u64,
     style: Style,
     children: Vec<Element>,
     text: String,
@@ -26,6 +28,7 @@ pub struct Text {
 impl Text {
     pub fn new(text: String) -> Text {
         Text {
+            id: u64::MAX,
             style: Style {
                 ..Default::default()
             },
@@ -50,8 +53,19 @@ impl Text {
         Vec::new()
     }
 
+    pub fn children_mut(&mut self) -> &mut Vec<Element> {
+        &mut self.children
+    }
+
     pub const fn name(&self) -> &'static str {
         "Text"
+    }
+    pub const fn id(&self) -> u64 {
+        self.id
+    }
+
+    pub fn id_mut(&mut self) -> &mut u64 {
+        &mut self.id
     }
 
     pub fn draw(&mut self, render_context: &mut RenderContext) {
