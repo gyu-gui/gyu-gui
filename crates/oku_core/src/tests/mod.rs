@@ -1,13 +1,13 @@
 #[cfg(test)]
 mod tests {
     use crate::elements::container::Container;
-    use crate::elements::text::Text;
     use crate::elements::element::Element;
+    use crate::elements::empty::Empty;
+    use crate::elements::text::Text;
     use crate::elements::trees::diff_tree;
 
     #[test]
     fn diff_assigns_stable_id_when_child_is_removed() {
-
         let mut old_a = Container::new();
         let mut old_b = Element::Text(Text::new(String::from("b")));
         let mut old_c = Element::Text(Text::new(String::from("c")));
@@ -20,12 +20,14 @@ mod tests {
         let mut old_a = Element::Container(old_a);
 
         let mut new_a = Container::new();
+        let mut new_b = Element::Empty(Empty::new());
         let mut new_c = Element::Text(Text::new(String::from("c")));
+        new_a = new_a.add_child(new_b);
         new_a = new_a.add_child(new_c);
         let mut new_a = Element::Container(new_a);
 
         let mut new_tree = diff_tree(Some(&mut old_a), Some(&mut new_a));
 
-        assert_eq!(old_a.children()[1].id(), new_tree.children()[0].id());
+        assert_eq!(old_a.children()[1].id(), new_tree.children()[1].id(), "test that b has the same id when removed");
     }
 }
