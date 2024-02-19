@@ -1,6 +1,6 @@
 use crate::elements::color::Color;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Copy, Debug)]
 pub enum Unit {
     Px(f32),
     Auto,
@@ -15,14 +15,14 @@ impl Unit {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Copy, Debug)]
 pub enum Display {
     Flex,
     Block,
     Grid,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Copy, Debug)]
 pub enum AlignItems {
     Start,
     End,
@@ -33,7 +33,7 @@ pub enum AlignItems {
     Stretch,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Copy, Debug)]
 pub enum AlignContent {
     Start,
     End,
@@ -48,7 +48,7 @@ pub enum AlignContent {
 
 pub type JustifyContent = AlignContent;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Copy, Debug)]
 pub enum FlexDirection {
     Row,
     Column,
@@ -56,7 +56,7 @@ pub enum FlexDirection {
     ColumnReverse,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Copy, Debug)]
 pub struct Style {
     pub margin: [f32; 4],
     pub padding: [f32; 4],

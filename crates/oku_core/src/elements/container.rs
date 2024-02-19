@@ -2,14 +2,10 @@ use crate::elements::color::Color;
 use crate::elements::element::Element;
 use crate::elements::layout_context::LayoutContext;
 use crate::elements::style::{AlignItems, Display, FlexDirection, JustifyContent, Style, Unit};
-use crate::{Props, RenderContext};
-use cosmic_text::rustybuzz::ttf_parser::Width;
+use crate::RenderContext;
 use cosmic_text::FontSystem;
-use rand::Rng;
-use taffy::style_helpers::length;
 use taffy::{NodeId, TaffyTree};
-use tiny_skia::{LineCap, LineJoin, Paint, PathBuilder, Rect, StrokeDash, Transform};
-use crate::widget_id::create_unique_widget_id;
+use tiny_skia::{LineCap, LineJoin, Paint, PathBuilder, Rect, Transform};
 
 #[derive(Clone, Default)]
 pub struct Container {
@@ -70,7 +66,7 @@ impl Container {
         paint.set_color_rgba8(self.style.background.r_u8(), self.style.background.g_u8(), self.style.background.b_u8(), self.style.background.a_u8());
         paint.anti_alias = true;
 
-        render_context.canvas.fill_rect(tiny_skia::Rect::from_xywh(self.computed_x, self.computed_y, self.computed_width, self.computed_height).unwrap(), &paint, Transform::identity(), None);
+        render_context.canvas.fill_rect(Rect::from_xywh(self.computed_x, self.computed_y, self.computed_width, self.computed_height).unwrap(), &paint, Transform::identity(), None);
 
         for child in self.children.iter_mut() {
             child.draw(render_context);
@@ -112,7 +108,7 @@ impl Container {
             child_nodes.push(child_node);
         }
 
-        let style: taffy::Style = self.style.clone().into();
+        let style: taffy::Style = self.style.into();
 
         taffy_tree.new_with_children(style, &child_nodes).unwrap()
     }
@@ -153,7 +149,7 @@ impl Container {
     }
 
     pub fn computed_style(&self) -> Style {
-        self.style.clone()
+        self.style
     }
     pub fn computed_style_mut(&mut self) -> &mut Style {
         &mut self.style
