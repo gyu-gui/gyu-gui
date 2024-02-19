@@ -55,7 +55,7 @@ impl Empty {
 
     pub fn finalize_layout(&mut self, _taffy_tree: &mut TaffyTree<LayoutContext>, _root_node: NodeId, _x: f32, _y: f32) {}
 
-    pub fn computed_style(&mut self) -> Style {
+    pub fn computed_style(&self) -> Style {
         Style::default()
     }
 

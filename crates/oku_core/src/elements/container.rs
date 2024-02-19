@@ -1,6 +1,7 @@
 use crate::elements::color::Color;
 use crate::elements::element::Element;
 use crate::elements::layout_context::LayoutContext;
+use crate::elements::standard_element::StandardElement;
 use crate::elements::style::{AlignItems, Display, FlexDirection, JustifyContent, Style, Unit};
 use crate::RenderContext;
 use cosmic_text::FontSystem;
@@ -36,32 +37,27 @@ impl Container {
     }
 }
 
-impl Container {
-    pub fn add_child(mut self, widget: Element) -> Container {
-        self.children.push(widget);
-        self
-    }
-
-    pub fn children(&self) -> Vec<Element> {
+impl StandardElement for Container {
+    fn children(&self) -> Vec<Element> {
         self.children.clone()
     }
 
-    pub fn children_mut(&mut self) -> &mut Vec<Element> {
+    fn children_mut(&mut self) -> &mut Vec<Element> {
         &mut self.children
     }
 
-    pub const fn name(&self) -> &'static str {
+    fn name(&self) -> &'static str {
         "Container"
     }
-    pub const fn id(&self) -> u64 {
+    fn id(&self) -> u64 {
         self.id
     }
 
-    pub fn id_mut(&mut self) -> &mut u64 {
+    fn id_mut(&mut self) -> &mut u64 {
         &mut self.id
     }
 
-    pub fn draw(&mut self, render_context: &mut RenderContext) {
+    fn draw(&mut self, render_context: &mut RenderContext) {
         let mut paint = Paint::default();
         paint.set_color_rgba8(self.style.background.r_u8(), self.style.background.g_u8(), self.style.background.b_u8(), self.style.background.a_u8());
         paint.anti_alias = true;
@@ -73,7 +69,7 @@ impl Container {
         }
     }
 
-    pub fn debug_draw(&mut self, render_context: &mut RenderContext) {
+    fn debug_draw(&mut self, render_context: &mut RenderContext) {
         let mut paint = Paint::default();
         paint.set_color_rgba8(0, 0, 0, 255);
         paint.anti_alias = true;
@@ -100,7 +96,7 @@ impl Container {
         }
     }
 
-    pub fn compute_layout(&mut self, taffy_tree: &mut TaffyTree<LayoutContext>, font_system: &mut FontSystem) -> NodeId {
+    fn compute_layout(&mut self, taffy_tree: &mut TaffyTree<LayoutContext>, font_system: &mut FontSystem) -> NodeId {
         let mut child_nodes: Vec<NodeId> = Vec::with_capacity(self.children().len());
 
         for child in self.children.iter_mut() {
@@ -113,7 +109,7 @@ impl Container {
         taffy_tree.new_with_children(style, &child_nodes).unwrap()
     }
 
-    pub fn finalize_layout(&mut self, taffy_tree: &mut TaffyTree<LayoutContext>, root_node: NodeId, x: f32, y: f32) {
+    fn finalize_layout(&mut self, taffy_tree: &mut TaffyTree<LayoutContext>, root_node: NodeId, x: f32, y: f32) {
         let result = taffy_tree.layout(root_node).unwrap();
 
         self.computed_x = x + result.location.x;
@@ -127,6 +123,20 @@ impl Container {
             let child2 = taffy_tree.child_at_index(root_node, index).unwrap();
             child.finalize_layout(taffy_tree, child2, self.computed_x, self.computed_y);
         }
+    }
+
+    fn computed_style(&self) -> Style {
+        self.style
+    }
+    fn computed_style_mut(&mut self) -> &mut Style {
+        &mut self.style
+    }
+}
+
+impl Container {
+    pub fn add_child(mut self, widget: Element) -> Container {
+        self.children.push(widget);
+        self
     }
 
     pub const fn computed_x(&self) -> f32 {
@@ -146,13 +156,6 @@ impl Container {
     }
     pub const fn computed_padding(&self) -> [f32; 4] {
         self.computed_padding
-    }
-
-    pub fn computed_style(&self) -> Style {
-        self.style
-    }
-    pub fn computed_style_mut(&mut self) -> &mut Style {
-        &mut self.style
     }
 
     // Styles

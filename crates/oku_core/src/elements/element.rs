@@ -1,6 +1,7 @@
 use crate::elements::container::Container;
 use crate::elements::empty::Empty;
 use crate::elements::layout_context::LayoutContext;
+use crate::elements::standard_element::StandardElement;
 use crate::elements::style::Style;
 use crate::elements::text::Text;
 use crate::RenderContext;
@@ -14,8 +15,8 @@ pub enum Element {
     Empty(Empty),
 }
 
-impl Element {
-    pub fn id(&self) -> u64 {
+impl StandardElement for Element {
+    fn id(&self) -> u64 {
         match self {
             Element::Container(container) => container.id(),
             Element::Text(text) => text.id(),
@@ -23,7 +24,7 @@ impl Element {
         }
     }
 
-    pub fn id_mut(&mut self) -> &mut u64 {
+    fn id_mut(&mut self) -> &mut u64 {
         match self {
             Element::Container(container) => container.id_mut(),
             Element::Text(text) => text.id_mut(),
@@ -31,21 +32,21 @@ impl Element {
         }
     }
 
-    pub fn draw(&mut self, render_context: &mut RenderContext) {
+    fn draw(&mut self, render_context: &mut RenderContext) {
         match self {
             Element::Container(container) => container.draw(render_context),
             Element::Text(text) => text.draw(render_context),
             Element::Empty(empty) => empty.draw(render_context),
         }
     }
-    pub fn debug_draw(&mut self, render_context: &mut RenderContext) {
+    fn debug_draw(&mut self, render_context: &mut RenderContext) {
         match self {
             Element::Container(container) => container.debug_draw(render_context),
             Element::Text(text) => text.debug_draw(render_context),
             Element::Empty(empty) => empty.debug_draw(render_context),
         }
     }
-    pub fn children(&mut self) -> Vec<Element> {
+    fn children(&self) -> Vec<Element> {
         match self {
             Element::Container(container) => container.children(),
             Element::Text(text) => text.children(),
@@ -53,7 +54,7 @@ impl Element {
         }
     }
 
-    pub fn children_mut(&mut self) -> &mut Vec<Element> {
+    fn children_mut(&mut self) -> &mut Vec<Element> {
         match self {
             Element::Container(container) => container.children_mut(),
             Element::Text(text) => text.children_mut(),
@@ -61,7 +62,7 @@ impl Element {
         }
     }
 
-    pub fn name(&self) -> &'static str {
+    fn name(&self) -> &'static str {
         match self {
             Element::Container(container) => container.name(),
             Element::Text(text) => text.name(),
@@ -69,7 +70,7 @@ impl Element {
         }
     }
 
-    pub fn compute_layout(&mut self, taffy_tree: &mut TaffyTree<LayoutContext>, font_system: &mut FontSystem) -> NodeId {
+    fn compute_layout(&mut self, taffy_tree: &mut TaffyTree<LayoutContext>, font_system: &mut FontSystem) -> NodeId {
         match self {
             Element::Container(container) => container.compute_layout(taffy_tree, font_system),
             Element::Text(text) => text.compute_layout(taffy_tree, font_system),
@@ -77,7 +78,7 @@ impl Element {
         }
     }
 
-    pub fn computed_style(&mut self) -> Style {
+    fn computed_style(&self) -> Style {
         match self {
             Element::Container(container) => container.computed_style(),
             Element::Text(text) => text.computed_style(),
@@ -85,7 +86,7 @@ impl Element {
         }
     }
 
-    pub fn computed_style_mut(&mut self) -> &mut Style {
+    fn computed_style_mut(&mut self) -> &mut Style {
         match self {
             Element::Container(container) => container.computed_style_mut(),
             Element::Text(text) => text.computed_style_mut(),
@@ -93,7 +94,7 @@ impl Element {
         }
     }
 
-    pub fn finalize_layout(&mut self, taffy_tree: &mut TaffyTree<LayoutContext>, root_node: NodeId, x: f32, y: f32) {
+    fn finalize_layout(&mut self, taffy_tree: &mut TaffyTree<LayoutContext>, root_node: NodeId, x: f32, y: f32) {
         match self {
             Element::Container(container) => container.finalize_layout(taffy_tree, root_node, x, y),
             Element::Text(text) => text.finalize_layout(taffy_tree, root_node, x, y),
