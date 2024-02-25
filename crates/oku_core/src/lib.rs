@@ -94,12 +94,9 @@ fn rgb_to_encoded_u32(r: u32, g: u32, b: u32) -> u32 {
 }
 
 pub fn main(application: Box<dyn Application>) {
-
-    /*wgpu_integration();
-    return;*/
-
     let rt = tokio::runtime::Runtime::new().unwrap();
-    rt.block_on(async_main(application))
+    // rt.block_on(async_main(application))
+    rt.block_on( wgpu_integration());
 }
 
 #[allow(dead_code)]

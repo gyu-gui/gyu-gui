@@ -1,4 +1,6 @@
 use std::rc::Rc;
+use std::sync::Arc;
+use std::thread;
 use glam;
 use winit::event::{ElementState, Event, WindowEvent};
 use winit::event_loop::{ActiveEventLoop, ControlFlow, EventLoop, EventLoopBuilder};
@@ -35,7 +37,7 @@ struct RenderContext {
     device: Device,
 
     // Window and Surface must have the same lifetime scope and it must be dropped after the Surface.
-    window: winit::window::Window,
+    window: Arc<winit::window::Window>,
 }
 
 #[allow(dead_code)]
@@ -44,27 +46,36 @@ enum ActionRequestEvent {
     WakeUp,
 }
 
-pub fn wgpu_integration() {
+pub async fn wgpu_integration() {
     env_logger::init();
     let winit_event_loop = EventLoop::<ActionRequestEvent>::with_user_event().build().unwrap();
     let window_attributes = Window::default_attributes().with_title("oku").with_transparent(false);
     let window = Rc::new(winit_event_loop.create_window(window_attributes).expect("Failed to create window"));
 
+    let mut render_context: Option<RenderContext> = None;
 
-    winit_event_loop.run(move |event, event_loop_window_target| {
+    winit_event_loop.run(|f, b| {
+        tokio::task::spawn(|| {
+            Box::pin(foo(f, b));
+        });
+    }).unwrap();
+
+}
+pub async fn foo(event: Event<ActionRequestEvent>, event_loop_window_target: &ActiveEventLoop) {
         event_loop_window_target.set_control_flow(ControlFlow::Wait);
+
         let mut should_draw = false;
-    
+
         /*// Create the first tree
         if app.borrow_mut().element_tree.is_none() {
             should_draw = true;
         }*/
-    
+
         match event {
             Event::WindowEvent { window_id, event } => match event {
                 WindowEvent::ActivationTokenDone { .. } => {}
                 WindowEvent::Resized(size) => {
-                 
+
                 }
                 WindowEvent::Moved(_) => {}
                 WindowEvent::CloseRequested => {
@@ -104,7 +115,9 @@ pub fn wgpu_integration() {
                 }
             },
             Event::Resumed => {
-                create_window(event_loop_window_target);
+                async {
+                    create_render_context(event_loop_window_target);
+                }.await;
             }
             Event::NewEvents(_) => {}
             Event::DeviceEvent { .. } => {}
@@ -114,15 +127,45 @@ pub fn wgpu_integration() {
             Event::AboutToWait => {}
             Event::LoopExiting => {}
             Event::MemoryWarning => {}
-        };
-
-    }).unwrap();
-
+        }
 }
 
-fn create_window(event_loop: &ActiveEventLoop) -> Rc<Window> {
+async fn create_render_context(event_loop: &ActiveEventLoop) -> Option<RenderContext> {
     let window_attributes = Window::default_attributes().with_title("Oku").with_transparent(false);
 
-    let window = Rc::new(event_loop.create_window(window_attributes).expect("Failed to create window"));
-    window
+    let window = Arc::new(event_loop.create_window(window_attributes).expect("Failed to create window"));
+
+    let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
+        backends: wgpu::Backends::all(),
+        ..Default::default()
+    });
+
+    let surface = unsafe { instance.create_surface(window.clone()) }.unwrap();
+    let adapter = instance.request_adapter(
+        &wgpu::RequestAdapterOptions {
+            power_preference: wgpu::PowerPreference::default(),
+            compatible_surface: Some(&surface),
+            force_fallback_adapter: false,
+        },
+    ).await;
+
+    let (device, queue) = adapter.request_device(
+        &wgpu::DeviceDescriptor {
+            label: wgpu::Label::from("oku_wgpu_renderer"),
+            required_features: wgpu::Features::empty(),
+            required_limits: wgpu::Limits::default(),
+        },
+        None, // Trace path
+    ).unwrap();
+
+
+   /* let mut render_context = RenderContext {
+        surface: Box::new(()),
+        renderer: Box::new(()),
+        device: Device::WgpuDevice(),
+        window: window,
+    };*/
+
+    None
+    // Some(render_context)
 }
