@@ -42,16 +42,17 @@ struct RenderContext<'a> {
     render_pipeline: wgpu::RenderPipeline,
     vertex_buffer: wgpu::Buffer,
     index_buffer: wgpu::Buffer,
+    oku_bind_group: wgpu::BindGroup,
 
     // Window and Surface must have the same lifetime scope and it must be dropped after the Surface.
     window: Arc<winit::window::Window>,
 }
 
 const VERTICES: &[Vertex] = &[
-    Vertex { position: [-0.5, 0.5, 0.0], color: [0.5, 0.0, 0.2] },
-    Vertex { position: [-0.5, -0.5, 0.0], color: [0.5, 0.0, 0.2] },
-    Vertex { position: [0.5, 0.5, 0.0], color: [0.5, 0.0, 0.5] },
-    Vertex { position: [0.5, -0.5, 0.0], color: [0.5, 0.0, 0.5] },
+    Vertex { position: [-0.5, 0.5, 0.0], color: [0.5, 0.0, 0.2], tex_coords: [0.0, 0.0] },
+    Vertex { position: [-0.5, -0.5, 0.0], color: [0.5, 0.0, 0.2], tex_coords: [0.0, 1.0] },
+    Vertex { position: [0.5, 0.5, 0.0], color: [0.5, 0.0, 0.5], tex_coords: [1.0, 0.0] },
+    Vertex { position: [0.5, -0.5, 0.0], color: [0.5, 0.0, 0.5], tex_coords: [1.0, 1.0] },
 ];
 
 const INDICES: &[u16] = &[
@@ -64,17 +65,33 @@ const INDICES: &[u16] = &[
 struct Vertex {
     position: [f32; 3],
     color: [f32; 3],
+    tex_coords: [f32; 2],
 }
 
 impl Vertex {
-    const ATTRIBS: [wgpu::VertexAttribute; 2] =
-        wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x3];
 
     fn description() -> wgpu::VertexBufferLayout<'static> {
+        use std::mem;
         wgpu::VertexBufferLayout {
-            array_stride: std::mem::size_of::<Vertex>() as wgpu::BufferAddress,
+            array_stride: mem::size_of::<Vertex>() as wgpu::BufferAddress,
             step_mode: wgpu::VertexStepMode::Vertex,
-            attributes: &Self::ATTRIBS,
+            attributes: &[
+                wgpu::VertexAttribute {
+                    offset: 0,
+                    shader_location: 0,
+                    format: wgpu::VertexFormat::Float32x3,
+                },
+                wgpu::VertexAttribute {
+                    offset: mem::size_of::<[f32; 3]>() as wgpu::BufferAddress,
+                    shader_location: 1,
+                    format: wgpu::VertexFormat::Float32x3,
+                },
+                wgpu::VertexAttribute {
+                    offset: mem::size_of::<[f32; 6]>() as wgpu::BufferAddress,
+                    shader_location: 2,
+                    format: wgpu::VertexFormat::Float32x2,
+                },
+            ]
         }
     }
 }
@@ -99,8 +116,6 @@ pub fn wgpu_integration() {
     async fn async_operation(mut rx: tokio::sync::mpsc::Receiver<Snapshot>) {
         let mut render_context: Option<RenderContext> = None;
         let mut should_draw = false;
-
-
 
         loop {
             tokio::select! {
@@ -132,9 +147,10 @@ pub fn wgpu_integration() {
                     }
 
                     if should_draw {
-                        let output = render_context.as_ref().unwrap().surface.get_current_texture().unwrap();
+                        let render_context = render_context.as_ref().unwrap();
+                        let output = render_context.surface.get_current_texture().unwrap();
                         let view = output.texture.create_view(&wgpu::TextureViewDescriptor::default());
-                        let mut encoder = render_context.as_ref().unwrap().device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                        let mut encoder = render_context.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
                             label: Some("Render Encoder"),
                         });
 
@@ -158,13 +174,14 @@ pub fn wgpu_integration() {
                                 occlusion_query_set: None,
                                 timestamp_writes: None,
                             });
-                                _render_pass.set_pipeline(&render_context.as_ref().unwrap().render_pipeline);
-                                _render_pass.set_vertex_buffer(0, render_context.as_ref().unwrap().vertex_buffer.slice(..));
-                                _render_pass.set_index_buffer(render_context.as_ref().unwrap().index_buffer.slice(..), wgpu::IndexFormat::Uint16);
+                                _render_pass.set_pipeline(&render_context.render_pipeline);
+                                _render_pass.set_bind_group(0, &render_context.oku_bind_group, &[]);
+                                _render_pass.set_vertex_buffer(0, render_context.vertex_buffer.slice(..));
+                                _render_pass.set_index_buffer(render_context.index_buffer.slice(..), wgpu::IndexFormat::Uint16);
                                 _render_pass.draw_indexed(0..(INDICES.len() as u32), 0, 0..1);
                             }
 
-                        render_context.as_ref().unwrap().queue.submit(std::iter::once(encoder.finish()));
+                        render_context.queue.submit(std::iter::once(encoder.finish()));
                         output.present();
                         should_draw = false;
                     }
@@ -316,10 +333,103 @@ impl RenderContext<'_> {
         };
         surface.configure(&device, &config);
 
+
+        let oku_image_bytes = include_bytes!("oku.png");
+        let oku_image = image::load_from_memory(oku_image_bytes).unwrap();
+        let oku_image_rgba = oku_image.to_rgba8();
+
+        use image::GenericImageView;
+
+        let texture_size = wgpu::Extent3d {
+            width: oku_image.width(),
+            height: oku_image.height(),
+            depth_or_array_layers: 1,
+        };
+
+        let oku_image_texture = device.create_texture(
+            &wgpu::TextureDescriptor {
+                size: texture_size,
+                mip_level_count: 1,
+                sample_count: 1,
+                dimension: wgpu::TextureDimension::D2,
+                format: wgpu::TextureFormat::Rgba8UnormSrgb,
+                usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
+                label: Some("oku_image_texture"),
+                view_formats: &[],
+            }
+        );
+
+        queue.write_texture(
+            wgpu::ImageCopyTexture {
+                texture: &oku_image_texture,
+                mip_level: 0,
+                origin: wgpu::Origin3d::ZERO,
+                aspect: wgpu::TextureAspect::All,
+            },
+            &oku_image_rgba,
+            wgpu::ImageDataLayout {
+                offset: 0,
+                bytes_per_row: Some(4 * oku_image.width()),
+                rows_per_image: Some(oku_image.height()),
+            },
+            texture_size,
+        );
+
+        let oku_image_texture_view = oku_image_texture.create_view(&wgpu::TextureViewDescriptor::default());
+        let oku_image_sampler = device.create_sampler(&wgpu::SamplerDescriptor {
+            address_mode_u: wgpu::AddressMode::ClampToEdge,
+            address_mode_v: wgpu::AddressMode::ClampToEdge,
+            address_mode_w: wgpu::AddressMode::ClampToEdge,
+            mag_filter: wgpu::FilterMode::Linear,
+            min_filter: wgpu::FilterMode::Nearest,
+            mipmap_filter: wgpu::FilterMode::Nearest,
+            ..Default::default()
+        });
+
+        let texture_bind_group_layout =
+            device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                entries: &[
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 0,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Texture {
+                            multisampled: false,
+                            view_dimension: wgpu::TextureViewDimension::D2,
+                            sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                        },
+                        count: None,
+                    },
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 1,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
+                        count: None,
+                    },
+                ],
+                label: Some("texture_bind_group_layout"),
+            });
+
+        let oku_bind_group = device.create_bind_group(
+            &wgpu::BindGroupDescriptor {
+                layout: &texture_bind_group_layout,
+                entries: &[
+                    wgpu::BindGroupEntry {
+                        binding: 0,
+                        resource: wgpu::BindingResource::TextureView(&oku_image_texture_view),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 1,
+                        resource: wgpu::BindingResource::Sampler(&oku_image_sampler),
+                    }
+                ],
+                label: Some("oku_bind_group"),
+            }
+        );
+
         let shader = device.create_shader_module(wgpu::include_wgsl!("shader.wgsl"));
         let render_pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("Render Pipeline Layout"),
-            bind_group_layouts: &[],
+            bind_group_layouts: &[&texture_bind_group_layout],
             push_constant_ranges: &[],
         });
 
@@ -383,6 +493,7 @@ impl RenderContext<'_> {
             render_pipeline,
             vertex_buffer,
             index_buffer,
+            oku_bind_group,
             window,
         };
 

@@ -21,6 +21,7 @@ glam = { version = "0.25.0" }
 env_logger = { version = "0.11" }
 wgpu = { version = "0.19.3" }
 bytemuck = {  version = "1.14.0" , features = ["derive"] }
+image = {version = "0.24.9", default-features = false, features = ["png", "jpeg"]}
 
 [features]
 dynamic_linking = []
