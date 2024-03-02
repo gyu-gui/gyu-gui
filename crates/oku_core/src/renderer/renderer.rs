@@ -38,6 +38,7 @@ struct RenderContext<'a> {
     surface_config: wgpu::SurfaceConfiguration,
     device: wgpu::Device,
     queue: wgpu::Queue,
+    render_pipeline: wgpu::RenderPipeline,
 
     // Window and Surface must have the same lifetime scope and it must be dropped after the Surface.
     window: Arc<winit::window::Window>,
@@ -63,6 +64,8 @@ pub fn wgpu_integration() {
     async fn async_operation(mut rx: tokio::sync::mpsc::Receiver<Snapshot>) {
         let mut render_context: Option<RenderContext> = None;
         let mut should_draw = false;
+
+
 
         loop {
             tokio::select! {
@@ -101,7 +104,7 @@ pub fn wgpu_integration() {
                         });
 
                             {
-                            let _render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                            let mut _render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                                 label: Some("Render Pass"),
                                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                                     view: &view,
@@ -120,6 +123,8 @@ pub fn wgpu_integration() {
                                 occlusion_query_set: None,
                                 timestamp_writes: None,
                             });
+                                _render_pass.set_pipeline(&render_context.as_ref().unwrap().render_pipeline);
+                                _render_pass.draw(0..3, 0..1);
                             }
 
                         render_context.as_ref().unwrap().queue.submit(std::iter::once(encoder.finish()));
@@ -273,11 +278,54 @@ async fn create_render_context(window: Arc<Window>) -> Option<RenderContext<'sta
     };
     surface.configure(&device, &config);
 
+    let shader = device.create_shader_module(wgpu::include_wgsl!("shader.wgsl"));
+    let render_pipeline_layout =  device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+        label: Some("Render Pipeline Layout"),
+        bind_group_layouts: &[],
+        push_constant_ranges: &[],
+    });
+
+    let render_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+        label: Some("Render Pipeline"),
+        layout: Some(&render_pipeline_layout),
+        vertex: wgpu::VertexState {
+            module: &shader,
+            entry_point: "vs_main",
+            buffers: &[],
+        },
+        fragment: Some(wgpu::FragmentState {
+            module: &shader,
+            entry_point: "fs_main",
+            targets: &[Some(wgpu::ColorTargetState {
+                format: config.format,
+                blend: Some(wgpu::BlendState::REPLACE),
+                write_mask: wgpu::ColorWrites::ALL,
+            })],
+        }),
+
+        primitive: wgpu::PrimitiveState {
+            topology: wgpu::PrimitiveTopology::TriangleList,
+            front_face: wgpu::FrontFace::Ccw,
+            cull_mode: Some(wgpu::Face::Back),
+            polygon_mode: wgpu::PolygonMode::Fill,
+            ..Default::default()
+        },
+        depth_stencil: None,
+        multisample: wgpu::MultisampleState {
+            count: 1,
+            mask: !0,
+            alpha_to_coverage_enabled: false,
+        },
+        multiview: None,
+    });
+
+
     let render_context = RenderContext {
         surface,
         device,
         surface_config: config,
         queue,
+        render_pipeline: render_pipeline,
         window,
     };
 
