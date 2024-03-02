@@ -1286,6 +1286,7 @@ name = "oku_core"
 version = "0.1.0"
 dependencies = [
  "accesskit",
+ "bytemuck",
  "cosmic-text",
  "env_logger",
  "glam",
