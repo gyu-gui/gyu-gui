@@ -19,18 +19,34 @@ struct PhysicalSize<P> {
     height: P,
 }
 
-/*trait Surface {
-    fn size(&self) -> PhysicalSize<u32>;
-}*/
-
 trait Renderer {
-    // fn quad_pipeline() -> QuadPipeline;
+    fn draw_rectangle_xywh(x: f32, y: f32, width: f32, height: f32);
 }
 
-/*enum Device {
-    WgpuDevice(wgpu::Device),
-    Software,
-}*/
+trait RectangleBatchRenderer {
+    fn begin();
+    fn end();
+
+    fn draw();
+}
+
+struct WgpuRectangleRenderer {
+
+}
+
+impl RectangleBatchRenderer for WgpuRectangleRenderer {
+    fn begin() {
+        todo!()
+    }
+
+    fn end() {
+        todo!()
+    }
+
+    fn draw() {
+        todo!()
+    }
+}
 
 struct RenderContext<'a> {
     /*  surface: Box<dyn Surface>,
@@ -53,10 +69,10 @@ struct RenderContext<'a> {
 }
 
 const VERTICES: &[Vertex] = &[
-    Vertex { position: [250.0, 250.0, 0.0], color: [0.5, 0.0, 0.2], tex_coords: [0.0, 0.0] },
-    Vertex { position: [250.0, 500.0, 0.0], color: [0.5, 0.0, 0.2], tex_coords: [0.0, 1.0] },
-    Vertex { position: [500.0, 250.0, 0.0], color: [0.5, 0.0, 0.5], tex_coords: [1.0, 0.0] },
-    Vertex { position: [500.0, 500.0, 0.0], color: [0.5, 0.0, 0.5], tex_coords: [1.0, 1.0] },
+    Vertex { position: [250.0, 250.0, 0.0], color: [0.5, 0.0, 0.2, 1.0], tex_coords: [0.0, 0.0] },
+    Vertex { position: [250.0, 500.0, 0.0], color: [0.5, 0.0, 0.2, 1.0], tex_coords: [0.0, 1.0] },
+    Vertex { position: [500.0, 250.0, 0.0], color: [0.5, 0.0, 0.5, 1.0], tex_coords: [1.0, 0.0] },
+    Vertex { position: [500.0, 500.0, 0.0], color: [0.5, 0.0, 0.5, 1.0], tex_coords: [1.0, 1.0] },
 ];
 
 const INDICES: &[u16] = &[
@@ -68,7 +84,7 @@ const INDICES: &[u16] = &[
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
 struct Vertex {
     position: [f32; 3],
-    color: [f32; 3],
+    color: [f32; 4],
     tex_coords: [f32; 2],
 }
 
@@ -124,7 +140,7 @@ impl Vertex {
                     format: wgpu::VertexFormat::Float32x3,
                 },
                 wgpu::VertexAttribute {
-                    offset: mem::size_of::<[f32; 6]>() as wgpu::BufferAddress,
+                    offset: mem::size_of::<[f32; 7]>() as wgpu::BufferAddress,
                     shader_location: 2,
                     format: wgpu::VertexFormat::Float32x2,
                 },
@@ -375,8 +391,6 @@ impl RenderContext<'_> {
         let oku_image_bytes = include_bytes!("oku.png");
         let oku_image = image::load_from_memory(oku_image_bytes).unwrap();
         let oku_image_rgba = oku_image.to_rgba8();
-
-        use image::GenericImageView;
 
         let texture_size = wgpu::Extent3d {
             width: oku_image.width(),
