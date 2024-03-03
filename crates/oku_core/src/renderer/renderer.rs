@@ -290,7 +290,6 @@ impl Renderer for WgpuRenderer<'_> {
     }
 
     fn begin_render_pass(&self) {
-        todo!()
     }
 
     fn end_render_pass(&self) {
@@ -341,8 +340,8 @@ impl Renderer for WgpuRenderer<'_> {
             _render_pass.set_pipeline(&self.rectangle_render_pipeline);
             _render_pass.set_bind_group(0, &self.rectangle_bind_group, &[]);
             _render_pass.set_bind_group(1, &self.camera_bind_group, &[]);
-            // _render_pass.set_vertex_buffer(0, render_context.vertex_buffer.slice(..));
-            // _render_pass.set_index_buffer(render_context.index_buffer.slice(..), wgpu::IndexFormat::Uint16);
+            _render_pass.set_vertex_buffer(0, vertex_buffer.slice(..));
+             _render_pass.set_index_buffer(index_buffer.slice(..), wgpu::IndexFormat::Uint16);
             _render_pass.draw_indexed(0..(INDICES.len() as u32), 0, 0..1);
         }
 
@@ -352,7 +351,7 @@ impl Renderer for WgpuRenderer<'_> {
 }
 
 struct RenderContext {
-    renderer: Box<dyn Renderer + Send>,
+    pub renderer: Box<dyn Renderer + Send>,
     window: Arc<Window>,
 }
 
@@ -487,6 +486,11 @@ pub fn wgpu_integration() {
                             let renderer = Box::new(WgpuRenderer::new(message.window.clone()).await);
                             render_context = Some(RenderContext::new(message.window.clone(), renderer).await);
 
+                            if let Some(render_context) = render_context {
+                                render_context.renderer.begin_render_pass();
+                                render_context.renderer.draw_rectangle_xywh(0.0, 0.0, 100.0, 100.0);
+                                render_context.renderer.end_render_pass();
+                            }
                             should_draw = true;
                         },
                         Event::WindowEvent { window_id, event } => match event {
