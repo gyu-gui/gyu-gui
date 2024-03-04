@@ -1,14 +1,12 @@
+use glam;
 use std::collections::HashMap;
 use std::pin::Pin;
 use std::rc::Rc;
 use std::sync::{Arc, RwLock};
-use glam;
-use tokio::sync::Mutex;
 use wgpu::util::DeviceExt;
 use winit::event::{ElementState, Event, WindowEvent};
 use winit::event_loop::{ActiveEventLoop, ControlFlow, EventLoop, EventLoopBuilder};
 use winit::keyboard::{Key, NamedKey};
-use winit::platform::modifier_supplement::KeyEventExtModifierSupplement;
 use winit::window::{Window, WindowId};
 
 struct LogicalSize<P> {
@@ -43,34 +41,38 @@ struct WgpuRenderer<'a> {
 }
 
 impl<'a> WgpuRenderer<'a> {
-
     async fn new(window: Arc<Window>) -> WgpuRenderer<'a> {
-
         let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
             backends: wgpu::Backends::all(),
             ..Default::default()
         });
 
         let surface = instance.create_surface(window.clone()).unwrap();
-        let adapter = instance.request_adapter(
-            &wgpu::RequestAdapterOptions {
+        let adapter = instance
+            .request_adapter(&wgpu::RequestAdapterOptions {
                 power_preference: wgpu::PowerPreference::default(),
                 compatible_surface: Some(&surface),
                 force_fallback_adapter: false,
-            },
-        ).await.unwrap();
+            })
+            .await
+            .unwrap();
 
-        let (device, queue) = adapter.request_device(
-            &wgpu::DeviceDescriptor {
-                label: wgpu::Label::from("oku_wgpu_renderer"),
-                required_features: wgpu::Features::empty(),
-                required_limits: wgpu::Limits::default(),
-            },
-            None, // Trace path
-        ).await.unwrap();
+        let (device, queue) = adapter
+            .request_device(
+                &wgpu::DeviceDescriptor {
+                    label: wgpu::Label::from("oku_wgpu_renderer"),
+                    required_features: wgpu::Features::empty(),
+                    required_limits: wgpu::Limits::default(),
+                },
+                None, // Trace path
+            )
+            .await
+            .unwrap();
 
         let surface_caps = surface.get_capabilities(&adapter);
-        let surface_format = surface_caps.formats.iter()
+        let surface_format = surface_caps
+            .formats
+            .iter()
             .copied()
             // Filter for SRGB compatible surfaces.
             .filter(|f| f.is_srgb())
@@ -98,18 +100,16 @@ impl<'a> WgpuRenderer<'a> {
             depth_or_array_layers: 1,
         };
 
-        let oku_image_texture = device.create_texture(
-            &wgpu::TextureDescriptor {
-                size: texture_size,
-                mip_level_count: 1,
-                sample_count: 1,
-                dimension: wgpu::TextureDimension::D2,
-                format: wgpu::TextureFormat::Rgba8UnormSrgb,
-                usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
-                label: Some("oku_image_texture"),
-                view_formats: &[],
-            }
-        );
+        let oku_image_texture = device.create_texture(&wgpu::TextureDescriptor {
+            size: texture_size,
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format: wgpu::TextureFormat::Rgba8UnormSrgb,
+            usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
+            label: Some("oku_image_texture"),
+            view_formats: &[],
+        });
 
         queue.write_texture(
             wgpu::ImageCopyTexture {
@@ -138,29 +138,27 @@ impl<'a> WgpuRenderer<'a> {
             ..Default::default()
         });
 
-        let texture_bind_group_layout =
-            device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                entries: &[
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 0,
-                        visibility: wgpu::ShaderStages::FRAGMENT,
-                        ty: wgpu::BindingType::Texture {
-                            multisampled: false,
-                            view_dimension: wgpu::TextureViewDimension::D2,
-                            sample_type: wgpu::TextureSampleType::Float { filterable: true },
-                        },
-                        count: None,
+        let texture_bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            entries: &[
+                wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Texture {
+                        multisampled: false,
+                        view_dimension: wgpu::TextureViewDimension::D2,
+                        sample_type: wgpu::TextureSampleType::Float { filterable: true },
                     },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 1,
-                        visibility: wgpu::ShaderStages::FRAGMENT,
-                        ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
-                        count: None,
-                    },
-                ],
-                label: Some("texture_bind_group_layout"),
-            });
-
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 1,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
+                    count: None,
+                },
+            ],
+            label: Some("texture_bind_group_layout"),
+        });
 
         let camera = Camera {
             width: window.inner_size().width as f32,
@@ -172,57 +170,49 @@ impl<'a> WgpuRenderer<'a> {
         let mut camera_uniform = CameraUniform::new();
         camera_uniform.update_view_proj(&camera);
 
-        let camera_buffer = device.create_buffer_init(
-            &wgpu::util::BufferInitDescriptor {
-                label: Some("Camera Buffer"),
-                contents: bytemuck::cast_slice(&[camera_uniform]),
-                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-            }
-        );
+        let camera_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Camera Buffer"),
+            contents: bytemuck::cast_slice(&[camera_uniform]),
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+        });
 
         let camera_bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            entries: &[
-                wgpu::BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: wgpu::ShaderStages::VERTEX,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Uniform,
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                }
-            ],
+            entries: &[wgpu::BindGroupLayoutEntry {
+                binding: 0,
+                visibility: wgpu::ShaderStages::VERTEX,
+                ty: wgpu::BindingType::Buffer {
+                    ty: wgpu::BufferBindingType::Uniform,
+                    has_dynamic_offset: false,
+                    min_binding_size: None,
+                },
+                count: None,
+            }],
             label: Some("camera_bind_group_layout"),
         });
 
         let camera_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
             layout: &camera_bind_group_layout,
-            entries: &[
-                wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: camera_buffer.as_entire_binding(),
-                }
-            ],
+            entries: &[wgpu::BindGroupEntry {
+                binding: 0,
+                resource: camera_buffer.as_entire_binding(),
+            }],
             label: Some("camera_bind_group"),
         });
 
-        let oku_bind_group = device.create_bind_group(
-            &wgpu::BindGroupDescriptor {
-                layout: &texture_bind_group_layout,
-                entries: &[
-                    wgpu::BindGroupEntry {
-                        binding: 0,
-                        resource: wgpu::BindingResource::TextureView(&oku_image_texture_view),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 1,
-                        resource: wgpu::BindingResource::Sampler(&oku_image_sampler),
-                    }
-                ],
-                label: Some("oku_bind_group"),
-            }
-        );
+        let oku_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            layout: &texture_bind_group_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: wgpu::BindingResource::TextureView(&oku_image_texture_view),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: wgpu::BindingResource::Sampler(&oku_image_sampler),
+                },
+            ],
+            label: Some("oku_bind_group"),
+        });
 
         let shader = device.create_shader_module(wgpu::include_wgsl!("shader.wgsl"));
         let render_pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
@@ -237,9 +227,7 @@ impl<'a> WgpuRenderer<'a> {
             vertex: wgpu::VertexState {
                 module: &shader,
                 entry_point: "vs_main",
-                buffers: &[
-                    Vertex::description()
-                ],
+                buffers: &[Vertex::description()],
             },
             fragment: Some(wgpu::FragmentState {
                 module: &shader,
@@ -278,37 +266,27 @@ impl<'a> WgpuRenderer<'a> {
             camera_bind_group,
             rectangle_render_pipeline: render_pipeline,
             rectangle_bind_group: oku_bind_group,
-        }
+        };
     }
-
 }
 
 impl Renderer for WgpuRenderer<'_> {
+    fn draw_rectangle_xywh(&self, x: f32, y: f32, width: f32, height: f32) {}
 
-    fn draw_rectangle_xywh(&self, x: f32, y: f32, width: f32, height: f32) {
-
-    }
-
-    fn begin_render_pass(&self) {
-    }
+    fn begin_render_pass(&self) {}
 
     fn end_render_pass(&self) {
+        let vertex_buffer = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Vertex Buffer"),
+            contents: bytemuck::cast_slice(VERTICES),
+            usage: wgpu::BufferUsages::VERTEX,
+        });
 
-        let vertex_buffer = self.device.create_buffer_init(
-            &wgpu::util::BufferInitDescriptor {
-                label: Some("Vertex Buffer"),
-                contents: bytemuck::cast_slice(VERTICES),
-                usage: wgpu::BufferUsages::VERTEX,
-            }
-        );
-
-        let index_buffer = self.device.create_buffer_init(
-            &wgpu::util::BufferInitDescriptor {
-                label: Some("Index Buffer"),
-                contents: bytemuck::cast_slice(INDICES),
-                usage: wgpu::BufferUsages::INDEX,
-            }
-        );
+        let index_buffer = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Index Buffer"),
+            contents: bytemuck::cast_slice(INDICES),
+            usage: wgpu::BufferUsages::INDEX,
+        });
 
         let mut encoder = self.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
             label: Some("Render Encoder"),
@@ -341,7 +319,7 @@ impl Renderer for WgpuRenderer<'_> {
             _render_pass.set_bind_group(0, &self.rectangle_bind_group, &[]);
             _render_pass.set_bind_group(1, &self.camera_bind_group, &[]);
             _render_pass.set_vertex_buffer(0, vertex_buffer.slice(..));
-             _render_pass.set_index_buffer(index_buffer.slice(..), wgpu::IndexFormat::Uint16);
+            _render_pass.set_index_buffer(index_buffer.slice(..), wgpu::IndexFormat::Uint16);
             _render_pass.draw_indexed(0..(INDICES.len() as u32), 0, 0..1);
         }
 
@@ -357,24 +335,34 @@ struct RenderContext {
 
 impl RenderContext {
     async fn new(window: Arc<Window>, renderer: Box<dyn Renderer + Send>) -> RenderContext {
-        RenderContext {
-            renderer,
-            window,
-        }
+        RenderContext { renderer, window }
     }
 }
 
 const VERTICES: &[Vertex] = &[
-    Vertex { position: [250.0, 250.0, 0.0], color: [0.5, 0.0, 0.2, 1.0], tex_coords: [0.0, 0.0] },
-    Vertex { position: [250.0, 500.0, 0.0], color: [0.5, 0.0, 0.2, 1.0], tex_coords: [0.0, 1.0] },
-    Vertex { position: [500.0, 250.0, 0.0], color: [0.5, 0.0, 0.5, 1.0], tex_coords: [1.0, 0.0] },
-    Vertex { position: [500.0, 500.0, 0.0], color: [0.5, 0.0, 0.5, 1.0], tex_coords: [1.0, 1.0] },
+    Vertex {
+        position: [250.0, 250.0, 0.0],
+        color: [0.5, 0.0, 0.2, 1.0],
+        tex_coords: [0.0, 0.0],
+    },
+    Vertex {
+        position: [250.0, 500.0, 0.0],
+        color: [0.5, 0.0, 0.2, 1.0],
+        tex_coords: [0.0, 1.0],
+    },
+    Vertex {
+        position: [500.0, 250.0, 0.0],
+        color: [0.5, 0.0, 0.5, 1.0],
+        tex_coords: [1.0, 0.0],
+    },
+    Vertex {
+        position: [500.0, 500.0, 0.0],
+        color: [0.5, 0.0, 0.5, 1.0],
+        tex_coords: [1.0, 1.0],
+    },
 ];
 
-const INDICES: &[u16] = &[
-    0, 1, 2,
-    2, 1, 3
-];
+const INDICES: &[u16] = &[0, 1, 2, 2, 1, 3];
 
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
@@ -413,12 +401,11 @@ impl Camera {
     fn build_view_projection_matrix(&self) -> glam::Mat4 {
         let view = glam::Mat4::IDENTITY;
         let proj = glam::Mat4::orthographic_lh(0.0, self.width, self.height, 0.0, self.znear, self.zfar);
-        return  proj * view;
+        return proj * view;
     }
 }
 
 impl Vertex {
-
     fn description<'a>() -> wgpu::VertexBufferLayout<'a> {
         use std::mem;
         wgpu::VertexBufferLayout {
@@ -440,7 +427,7 @@ impl Vertex {
                     shader_location: 2,
                     format: wgpu::VertexFormat::Float32x2,
                 },
-            ]
+            ],
         }
     }
 }
@@ -458,15 +445,19 @@ struct Snapshot {
 
 async fn foo() {
     let render_context: Pin<Box<Option<RenderContext>>> = Box::pin(None);
-
 }
 
 pub fn wgpu_integration() {
-    env_logger::init();
     let mut winit_event_loop = EventLoop::<ActionRequestEvent>::with_user_event().build().unwrap();
 
-    let rt = tokio::runtime::Runtime::new().unwrap();
+    cfg_if::cfg_if! {
+        if #[cfg(target_arch = "wasm32")] {
+        } else {
+            let rt = tokio::runtime::Runtime::new().unwrap();
+        }
+    }
 
+    #[cfg(not(target_arch = "wasm32"))]
     async fn async_operation(mut rx: tokio::sync::mpsc::Receiver<Snapshot>) {
         let mut render_context: Option<RenderContext> = None;
         let mut should_draw = false;
@@ -513,100 +504,137 @@ pub fn wgpu_integration() {
         }
     }
 
-    let (tx, rx) = tokio::sync::mpsc::channel::<Snapshot>(1);
-    rt.spawn(async_operation(rx));
+    cfg_if::cfg_if! {
+        if #[cfg(target_arch = "wasm32")] {
+        } else {
+            let (tx, rx) = tokio::sync::mpsc::channel::<Snapshot>(1);
+        }
+    }
+    cfg_if::cfg_if! {
+        if #[cfg(target_arch = "wasm32")] {
+        } else {
+            rt.spawn(async_operation(rx));
+        }
+    }
 
     let mut windows: HashMap<WindowId, Arc<Window>> = HashMap::new();
     let mut current_window: Option<Arc<Window>> = None;
 
-    winit_event_loop.run(|event: Event<ActionRequestEvent>, event_loop_window_target: &ActiveEventLoop| {
-        event_loop_window_target.set_control_flow(ControlFlow::Wait);
+    winit_event_loop
+        .run(|event: Event<ActionRequestEvent>, event_loop_window_target: &ActiveEventLoop| {
+            event_loop_window_target.set_control_flow(ControlFlow::Wait);
 
-        let clone_event = event.clone();
-        let current_window_check_event = event.clone();
-        match current_window_check_event {
-            Event::WindowEvent { window_id, event } => {
-                let current_window_value = windows.get(&window_id);
-                if current_window_value.is_some() {
+            let clone_event = event.clone();
+            let current_window_check_event = event.clone();
+            match current_window_check_event {
+                Event::WindowEvent { window_id, event } => {
+                    let current_window_value = windows.get(&window_id);
+                    if current_window_value.is_some() {
+                        current_window = Some(windows.get(&window_id).unwrap().clone());
+                    }
+                }
+                _ => {}
+            }
+
+            match event {
+                Event::WindowEvent { window_id, event } => match event {
+                    WindowEvent::ActivationTokenDone { .. } => {}
+                    WindowEvent::Moved(_) => {}
+                    WindowEvent::CloseRequested => {
+                        event_loop_window_target.exit();
+                    }
+                    WindowEvent::Destroyed => {}
+                    WindowEvent::DroppedFile(_) => {}
+                    WindowEvent::HoveredFile(_) => {}
+                    WindowEvent::HoveredFileCancelled => {}
+                    WindowEvent::Focused(_) => {}
+                    WindowEvent::KeyboardInput {
+                        device_id: _device_id,
+                        event: _event,
+                        is_synthetic: _is_synthetic,
+                    } => if _event.state == ElementState::Pressed {},
+                    WindowEvent::ModifiersChanged(_) => {}
+                    WindowEvent::Ime(_) => {}
+                    WindowEvent::Resized(size) => {
+                        cfg_if::cfg_if! {
+                            if #[cfg(target_arch = "wasm32")] {
+                            } else {
+                                rt.block_on(async {
+                            tx.send(Snapshot {
+                                event: clone_event,
+                                window: current_window.clone().unwrap(),
+                            })
+                                .await
+                                .expect("TODO: panic message");
+                            })
+                            }
+                        }
+                    }
+                    WindowEvent::CursorMoved { .. } | WindowEvent::RedrawRequested => {
+                        cfg_if::cfg_if! {
+                                if #[cfg(target_arch = "wasm32")] {
+                                } else {
+
+                                   rt.block_on(async {
+                                    tx.send(Snapshot {
+                                        event: clone_event,
+                                        window: current_window.clone().unwrap(),
+                                    })
+                                    .await
+                                    .expect("TODO: panic message");
+                                    });
+                            }
+                        }
+                    }
+                    WindowEvent::CursorEntered { .. } => {}
+                    WindowEvent::CursorLeft { .. } => {}
+                    WindowEvent::MouseWheel { .. } => {}
+                    WindowEvent::MouseInput { .. } => {}
+                    WindowEvent::PinchGesture { .. } => {}
+                    WindowEvent::DoubleTapGesture { .. } => {}
+                    WindowEvent::RotationGesture { .. } => {}
+                    WindowEvent::TouchpadPressure { .. } => {}
+                    WindowEvent::AxisMotion { .. } => {}
+                    WindowEvent::Touch(_) => {}
+                    WindowEvent::ScaleFactorChanged { .. } => {}
+                    WindowEvent::ThemeChanged(_) => {}
+                    WindowEvent::Occluded(_) => {}
+                },
+                Event::Resumed => {
+                    let window_attributes = Window::default_attributes().with_title("oku").with_transparent(false);
+                    let window = event_loop_window_target.create_window(window_attributes).expect("failed to create window");
+                    let window_id = window.id();
+                    windows.insert(window_id, Arc::new(window));
+
                     current_window = Some(windows.get(&window_id).unwrap().clone());
-                }
-            }
-            _ => {}
-        }
 
-        match event {
-            Event::WindowEvent { window_id, event } => match event {
-                WindowEvent::ActivationTokenDone { .. } => {}
-                WindowEvent::Moved(_) => {}
-                WindowEvent::CloseRequested => {
-                    event_loop_window_target.exit();
-                }
-                WindowEvent::Destroyed => {}
-                WindowEvent::DroppedFile(_) => {}
-                WindowEvent::HoveredFile(_) => {}
-                WindowEvent::HoveredFileCancelled => {}
-                WindowEvent::Focused(_) => {}
-                WindowEvent::KeyboardInput {
-                    device_id: _device_id,
-                    event: _event,
-                    is_synthetic: _is_synthetic,
-                } => {
-                    if _event.state == ElementState::Pressed {}
-                }
-                WindowEvent::ModifiersChanged(_) => {}
-                WindowEvent::Ime(_) => {}
-                WindowEvent::Resized(size) => {
-                    rt.block_on(async {
-                        tx.send(Snapshot {
+                    cfg_if::cfg_if! {
+                        if #[cfg(target_arch = "wasm32")] {
+                        } else {
+                           rt.block_on(async {
+                        cfg_if::cfg_if! {
+                            if #[cfg(target_arch = "wasm32")] {
+                            } else {
+                                tx.send(Snapshot {
                             event: clone_event,
                             window: current_window.clone().unwrap(),
-                        }).await.expect("TODO: panic message");
+                        })
+                        .await
+                        .expect("TODO: panic message");
+                            }
+                        }
                     })
+                        }
+                    }
                 }
-                WindowEvent::CursorMoved { .. } | WindowEvent::RedrawRequested => {
-                    rt.block_on(async {
-                        tx.send(Snapshot {
-                            event: clone_event,
-                            window: current_window.clone().unwrap(),
-                        }).await.expect("TODO: panic message");
-                    })
-                }
-                WindowEvent::CursorEntered { .. } => {}
-                WindowEvent::CursorLeft { .. } => {}
-                WindowEvent::MouseWheel { .. } => {}
-                WindowEvent::MouseInput { .. } => {}
-                WindowEvent::PinchGesture { .. } => {}
-                WindowEvent::DoubleTapGesture { .. } => {}
-                WindowEvent::RotationGesture { .. } => {}
-                WindowEvent::TouchpadPressure { .. } => {}
-                WindowEvent::AxisMotion { .. } => {}
-                WindowEvent::Touch(_) => {}
-                WindowEvent::ScaleFactorChanged { .. } => {}
-                WindowEvent::ThemeChanged(_) => {}
-                WindowEvent::Occluded(_) => {}
-            },
-            Event::Resumed => {
-                let window_attributes = Window::default_attributes().with_title("oku").with_transparent(false);
-                let window = event_loop_window_target.create_window(window_attributes).expect("failed to create window");
-                let window_id = window.id();
-                windows.insert(window_id, Arc::new(window));
-
-                current_window = Some(windows.get(&window_id).unwrap().clone());
-
-                rt.block_on(async {
-                    tx.send(Snapshot {
-                        event: clone_event,
-                        window: current_window.clone().unwrap(),
-                    }).await.expect("TODO: panic message");
-                })
+                Event::NewEvents(_) => {}
+                Event::DeviceEvent { .. } => {}
+                Event::UserEvent(_) => {}
+                Event::Suspended => {}
+                Event::AboutToWait => {}
+                Event::LoopExiting => {}
+                Event::MemoryWarning => {}
             }
-            Event::NewEvents(_) => {}
-            Event::DeviceEvent { .. } => {}
-            Event::UserEvent(_) => {}
-            Event::Suspended => {}
-            Event::AboutToWait => {}
-            Event::LoopExiting => {}
-            Event::MemoryWarning => {}
-        }
-    }).unwrap();
+        })
+        .unwrap();
 }

@@ -1,10 +1,10 @@
 pub mod components;
 pub mod elements;
 
+pub mod renderer;
 #[cfg(test)]
 mod tests;
 pub mod widget_id;
-pub mod renderer;
 
 use crate::elements::container::Container;
 use crate::elements::element::Element;
@@ -12,6 +12,7 @@ use crate::elements::layout_context::{measure_content, LayoutContext};
 use crate::elements::standard_element::StandardElement;
 use crate::elements::style::Unit;
 use accesskit::{Node, NodeBuilder, NodeClassSet, Role, Tree, TreeUpdate};
+use env_logger;
 //use accesskit_winit::{ActionRequestEvent, Adapter};
 use cosmic_text::{FontSystem, SwashCache};
 use renderer::renderer::wgpu_integration;
@@ -24,8 +25,12 @@ use tiny_skia::{Pixmap, Rect, Transform};
 use winit::event::{ElementState, Event, WindowEvent};
 use winit::event_loop::{ActiveEventLoop, ControlFlow, EventLoop, EventLoopBuilder};
 use winit::keyboard::{Key, NamedKey};
+#[cfg(not(target_arch = "wasm32"))]
 use winit::platform::modifier_supplement::KeyEventExtModifierSupplement;
 use winit::window::Window;
+
+#[cfg(target_arch = "wasm32")]
+use wasm_bindgen::prelude::*;
 
 pub trait Application {
     fn view(&self) -> Element;
@@ -92,9 +97,20 @@ impl State {
 fn rgb_to_encoded_u32(r: u32, g: u32, b: u32) -> u32 {
     b | (g << 8) | (r << 16)
 }
-
+use log::info;
+use log::Level;
 pub fn main(application: Box<dyn Application>) {
-    wgpu_integration();
+    cfg_if::cfg_if! {
+        if #[cfg(target_arch = "wasm32")] {
+            std::panic::set_hook(Box::new(console_error_panic_hook::hook));
+            console_log::init_with_level(log::Level::Info).expect("Couldn't initialize logger");
+            info!("It works!");
+        } else {
+            env_logger::init();
+        }
+    }
+    //wgpu_integration();
+    async_main(application);
 }
 
 #[allow(dead_code)]
@@ -103,7 +119,8 @@ enum ActionRequestEvent {
     WakeUp,
 }
 
-async fn async_main(application: Box<dyn Application>) {
+fn async_main(application: Box<dyn Application>) {
+    info!("It works 2!");
     let winit_event_loop = EventLoop::<ActionRequestEvent>::with_user_event().build().unwrap();
     //let window = Rc::new(Window::default_attributes().(&winit_event_loop).unwrap());
     //window.set_title("Oku");
@@ -170,10 +187,15 @@ fn event_loop(app: &mut OkuContext, event: Event<ActionRequestEvent>, event_loop
                 is_synthetic: _is_synthetic,
             } => {
                 if _event.state == ElementState::Pressed {
-                    if let Key::Named(NamedKey::F3) = _event.key_without_modifiers().as_ref() {
+                    cfg_if::cfg_if! {
+                        if #[cfg(target_arch = "wasm32")] {
+                        } else {
+                            if let Key::Named(NamedKey::F3) = _event.key_without_modifiers().as_ref() {
                         if let Some(render_context) = &mut app.render_context {
                             render_context.debug_draw = !render_context.debug_draw;
                             should_draw = true;
+                        }
+                    }
                         }
                     }
                 }
@@ -298,12 +320,21 @@ fn create_window(oku_context: &mut OkuContext, event_loop: &ActiveEventLoop) {
 
     let window = Rc::new(event_loop.create_window(window_attributes).expect("Failed to create window"));
 
+    #[cfg(target_arch = "wasm32")]
+    {
+        use winit::platform::web::WindowExtWebSys;
+
+        web_sys::window().unwrap().document().unwrap().body().unwrap().append_child(&window.canvas().unwrap()).unwrap();
+    }
+
+    info!("width: {}", window.inner_size().width);
+    info!("height: {}", window.inner_size().height);
     let context = softbuffer::Context::new(window.clone()).unwrap();
     let surface: Surface<Rc<Window>, Rc<Window>> = Surface::new(&context, window.clone()).unwrap();
-    let pixmap = Pixmap::new(window.inner_size().width, window.inner_size().height).unwrap();
+    let pixmap = Pixmap::new(100, 100).unwrap();
 
     oku_context.render_context = Some(RenderContext {
-        font_system: FontSystem::new(),
+        font_system: FontSystem::new_with_fonts([cosmic_text::fontdb::Source::Binary(Arc::new(include_bytes!("../../../fonts/FiraSans-Regular.ttf").as_slice()))]),
         swash_cache: SwashCache::new(),
         surface,
         canvas: pixmap,
