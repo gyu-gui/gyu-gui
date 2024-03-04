@@ -20,10 +20,10 @@ struct PhysicalSize<P> {
 }
 
 trait Renderer {
-    fn draw_rectangle_xywh(&self, x: f32, y: f32, width: f32, height: f32);
+    fn draw_rectangle_xywh(&mut self, x: f32, y: f32, width: f32, height: f32);
 
     fn begin_render_pass(&self);
-    fn end_render_pass(&self);
+    fn end_render_pass(&mut self);
 }
 
 struct WgpuRenderer<'a> {
@@ -38,6 +38,8 @@ struct WgpuRenderer<'a> {
 
     rectangle_render_pipeline: wgpu::RenderPipeline,
     rectangle_bind_group: wgpu::BindGroup,
+    rectangle_vertices: Vec<Vertex>,
+    rectangle_indices: Vec<u32>,
 }
 
 impl<'a> WgpuRenderer<'a> {
@@ -266,25 +268,64 @@ impl<'a> WgpuRenderer<'a> {
             camera_bind_group,
             rectangle_render_pipeline: render_pipeline,
             rectangle_bind_group: oku_bind_group,
+            rectangle_vertices: vec![],
+            rectangle_indices: vec![],
         };
     }
 }
 
 impl Renderer for WgpuRenderer<'_> {
-    fn draw_rectangle_xywh(&self, x: f32, y: f32, width: f32, height: f32) {}
+    fn draw_rectangle_xywh(&mut self, x: f32, y: f32, width: f32, height: f32) {
+        
+        let top_left = [x, y, 0.0];
+        let bottom_left = [x, y + height, 0.0];
+        let top_right = [x + width, y, 0.0];
+        let bottom_right = [x + width, y + height, 0.0];
+        
+        self.rectangle_vertices.append(&mut vec![
+            Vertex {
+                position: top_left,
+                color: [0.5, 0.0, 0.2, 1.0],
+                tex_coords: [0.0, 0.0],
+            },
+            Vertex {
+                position: bottom_left,
+                color: [0.5, 0.0, 0.2, 1.0],
+                tex_coords: [0.0, 1.0],
+            },
+            Vertex {
+                position: top_right,
+                color: [0.5, 0.0, 0.5, 1.0],
+                tex_coords: [1.0, 0.0],
+            },
+            Vertex {
+                position: bottom_right,
+                color: [0.5, 0.0, 0.5, 1.0],
+                tex_coords: [1.0, 1.0],
+            }]
+        );
+        
+        let next_starting_index: u32 = (self.rectangle_indices.len() / 6) as u32 * 4;
+        self.rectangle_indices.append(&mut vec![
+            next_starting_index + 0, next_starting_index + 1, next_starting_index + 2, next_starting_index + 2, next_starting_index + 1, next_starting_index + 3
+        ]);
+    
+    }
 
-    fn begin_render_pass(&self) {}
+    fn begin_render_pass(&self) {
+        
+    }
 
-    fn end_render_pass(&self) {
+    fn end_render_pass(&mut self) {
         let vertex_buffer = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Vertex Buffer"),
-            contents: bytemuck::cast_slice(VERTICES),
+            contents: bytemuck::cast_slice(&self.rectangle_vertices),
             usage: wgpu::BufferUsages::VERTEX,
         });
 
         let index_buffer = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Index Buffer"),
-            contents: bytemuck::cast_slice(INDICES),
+            contents: bytemuck::cast_slice(&self.rectangle_indices),
             usage: wgpu::BufferUsages::INDEX,
         });
 
@@ -319,12 +360,15 @@ impl Renderer for WgpuRenderer<'_> {
             _render_pass.set_bind_group(0, &self.rectangle_bind_group, &[]);
             _render_pass.set_bind_group(1, &self.camera_bind_group, &[]);
             _render_pass.set_vertex_buffer(0, vertex_buffer.slice(..));
-            _render_pass.set_index_buffer(index_buffer.slice(..), wgpu::IndexFormat::Uint16);
-            _render_pass.draw_indexed(0..(INDICES.len() as u32), 0, 0..1);
+            _render_pass.set_index_buffer(index_buffer.slice(..), wgpu::IndexFormat::Uint32);
+            _render_pass.draw_indexed(0..(self.rectangle_indices.len() as u32), 0, 0..1);
         }
 
         self.queue.submit(std::iter::once(encoder.finish()));
         output.present();
+        
+        self.rectangle_indices = vec![];
+        self.rectangle_vertices = vec![];
     }
 }
 
@@ -338,31 +382,6 @@ impl RenderContext {
         RenderContext { renderer, window }
     }
 }
-
-const VERTICES: &[Vertex] = &[
-    Vertex {
-        position: [250.0, 250.0, 0.0],
-        color: [0.5, 0.0, 0.2, 1.0],
-        tex_coords: [0.0, 0.0],
-    },
-    Vertex {
-        position: [250.0, 500.0, 0.0],
-        color: [0.5, 0.0, 0.2, 1.0],
-        tex_coords: [0.0, 1.0],
-    },
-    Vertex {
-        position: [500.0, 250.0, 0.0],
-        color: [0.5, 0.0, 0.5, 1.0],
-        tex_coords: [1.0, 0.0],
-    },
-    Vertex {
-        position: [500.0, 500.0, 0.0],
-        color: [0.5, 0.0, 0.5, 1.0],
-        tex_coords: [1.0, 1.0],
-    },
-];
-
-const INDICES: &[u16] = &[0, 1, 2, 2, 1, 3];
 
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
@@ -476,12 +495,6 @@ pub fn wgpu_integration() {
 
                             let renderer = Box::new(WgpuRenderer::new(message.window.clone()).await);
                             render_context = Some(RenderContext::new(message.window.clone(), renderer).await);
-
-                            if let Some(render_context) = render_context {
-                                render_context.renderer.begin_render_pass();
-                                render_context.renderer.draw_rectangle_xywh(0.0, 0.0, 100.0, 100.0);
-                                render_context.renderer.end_render_pass();
-                            }
                             should_draw = true;
                         },
                         Event::WindowEvent { window_id, event } => match event {
@@ -498,6 +511,11 @@ pub fn wgpu_integration() {
                     }
 
                     if should_draw {
+                        let render_context = render_context.as_mut().unwrap(); 
+                        render_context.renderer.begin_render_pass();
+                        render_context.renderer.draw_rectangle_xywh(0.0, 0.0, 100.0, 100.0);
+                        render_context.renderer.draw_rectangle_xywh(300.0, 100.0, 300.0, 200.0);
+                        render_context.renderer.end_render_pass();
                     }
                 }
             }

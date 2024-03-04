@@ -109,8 +109,8 @@ pub fn main(application: Box<dyn Application>) {
             env_logger::init();
         }
     }
-    //wgpu_integration();
-    async_main(application);
+    wgpu_integration();
+    //async_main(application);
 }
 
 #[allow(dead_code)]
