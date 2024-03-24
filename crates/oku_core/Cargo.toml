@@ -7,23 +7,23 @@ resolver = "2"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [dependencies]
 
-winit = { git = "https://github.com/rust-windowing/winit", rev = "944347696ab965d9dc5b617fc89daa9f7ad1ea88" }
+winit = { git = "https://github.com/rust-windowing/winit", rev = "3efa6d855dc40b395c3ed5e9c86beee809564069" }
 tiny-skia = "0.11.4"
 softbuffer = "0.4.1"
-cosmic-text = { git = "https://github.com/pop-os/cosmic-text", rev = "22e61965aa38ab0bd64bbdddf3848ae891edceba" }
-taffy = { git = "https://github.com/DioxusLabs/taffy", rev = "bb3ec967e6c386d9d9060010806d65201393a398" }
-accesskit = "0.12.2"
+cosmic-text = { git = "https://github.com/pop-os/cosmic-text", rev = "b08676909f882f553ab574601b35b58276a52458" }
+taffy = { git = "https://github.com/DioxusLabs/taffy", rev = "b7a5a06fd3b1275fc0073c39012b1baa2c89cc33" }
+accesskit = "0.12.3"
 #accesskit_winit = { version = "0.18.0" }
 
 log = "0.4"
 
 # https://crates.io/crates/glam
 # SSE2 is enabled by default on x86_64 targets.
-glam = { version = "0.25.0" }
+glam = { version = "0.27.0" }
 env_logger = { version = "0.11" }
 wgpu = { version = "0.19.3" }
-bytemuck = { version = "1.14.0", features = ["derive"] }
-image = { version = "0.24.9", default-features = false, features = ["png", "jpeg"] }
+bytemuck = { version = "1.15.0", features = ["derive"] }
+image = { version = "0.25.0", default-features = false, features = ["png", "jpeg"] }
 
 cfg-if = "1"
 

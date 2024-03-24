@@ -20,9 +20,9 @@ checksum = "c71b1793ee61086797f5c80b6efa2b8ffa6d5dd703f118545808a7f2e27f7046"
 
 [[package]]
 name = "accesskit"
-version = "0.12.2"
+version = "0.12.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6cb10ed32c63247e4e39a8f42e8e30fb9442fbf7878c8e4a9849e7e381619bea"
+checksum = "74a4b14f3d99c1255dcba8f45621ab1a2e7540a0009652d33989005a4d0bfc6b"
 
 [[package]]
 name = "addr2line"
@@ -265,9 +265,9 @@ checksum = "7f30e7476521f6f8af1a1c4c0b8cc94f0bee37d91763d0ca2665f299b6cd8aec"
 
 [[package]]
 name = "bytemuck"
-version = "1.14.0"
+version = "1.15.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "374d28ec25809ee0e23827c2ab573d729e293f281dfe393500e7ad618baa61c6"
+checksum = "5d6d68c57235a3a081186990eca2867354726650f42f7516ca50c28d6281fd15"
 dependencies = [
  "bytemuck_derive",
 ]
@@ -396,12 +396,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "color_quant"
-version = "1.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3d7b894f5411737b7867f4827955924d7c254fc9f4d91a6aad6b097804b1018b"
-
-[[package]]
 name = "colorchoice"
 version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -520,7 +514,7 @@ dependencies = [
 [[package]]
 name = "cosmic-text"
 version = "0.11.2"
-source = "git+https://github.com/pop-os/cosmic-text?rev=22e61965aa38ab0bd64bbdddf3848ae891edceba#22e61965aa38ab0bd64bbdddf3848ae891edceba"
+source = "git+https://github.com/pop-os/cosmic-text?rev=b08676909f882f553ab574601b35b58276a52458#b08676909f882f553ab574601b35b58276a52458"
 dependencies = [
  "bitflags 2.4.1",
  "fontdb",
@@ -607,8 +601,8 @@ checksum = "9ea835d29036a4087793836fa931b08837ad5e957da9e23886b29586fb9b6650"
 
 [[package]]
 name = "dpi"
-version = "0.0.0"
-source = "git+https://github.com/rust-windowing/winit?rev=944347696ab965d9dc5b617fc89daa9f7ad1ea88#944347696ab965d9dc5b617fc89daa9f7ad1ea88"
+version = "0.1.1"
+source = "git+https://github.com/rust-windowing/winit?rev=3efa6d855dc40b395c3ed5e9c86beee809564069#3efa6d855dc40b395c3ed5e9c86beee809564069"
 
 [[package]]
 name = "drm"
@@ -809,9 +803,9 @@ dependencies = [
 
 [[package]]
 name = "glam"
-version = "0.25.0"
+version = "0.27.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "151665d9be52f9bb40fc7966565d39666f2d1e69233571b71b87791c7e0528b3"
+checksum = "9e05e7e6723e3455f4818c7b26e855439f7546cf617ef669d1adedb8669e5cb9"
 
 [[package]]
 name = "glow"
@@ -948,16 +942,16 @@ dependencies = [
 
 [[package]]
 name = "image"
-version = "0.24.9"
+version = "0.25.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5690139d2f55868e080017335e4b94cb7414274c74f1669c84fb5feba2c9f69d"
+checksum = "a9b4f005360d32e9325029b38ba47ebd7a56f3316df09249368939562d518645"
 dependencies = [
  "bytemuck",
  "byteorder",
- "color_quant",
- "jpeg-decoder",
  "num-traits",
  "png",
+ "zune-core",
+ "zune-jpeg",
 ]
 
 [[package]]
@@ -1000,12 +994,6 @@ checksum = "8c37f63953c4c63420ed5fd3d6d398c719489b9f872b9fa683262f8edd363c7d"
 dependencies = [
  "libc",
 ]
-
-[[package]]
-name = "jpeg-decoder"
-version = "0.3.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f5d4a7da358eff58addd2877a45865158f0d78c911d43a5784ceb7bbf52833b0"
 
 [[package]]
 name = "js-sys"
@@ -1893,8 +1881,8 @@ dependencies = [
 
 [[package]]
 name = "taffy"
-version = "0.4.0"
-source = "git+https://github.com/DioxusLabs/taffy?rev=bb3ec967e6c386d9d9060010806d65201393a398#bb3ec967e6c386d9d9060010806d65201393a398"
+version = "0.4.1"
+source = "git+https://github.com/DioxusLabs/taffy?rev=b7a5a06fd3b1275fc0073c39012b1baa2c89cc33#b7a5a06fd3b1275fc0073c39012b1baa2c89cc33"
 dependencies = [
  "arrayvec",
  "grid",
@@ -2699,8 +2687,8 @@ checksum = "dff9641d1cd4be8d1a070daf9e3773c5f67e78b4d9d42263020c057706765c04"
 
 [[package]]
 name = "winit"
-version = "0.29.12"
-source = "git+https://github.com/rust-windowing/winit?rev=944347696ab965d9dc5b617fc89daa9f7ad1ea88#944347696ab965d9dc5b617fc89daa9f7ad1ea88"
+version = "0.29.15"
+source = "git+https://github.com/rust-windowing/winit?rev=3efa6d855dc40b395c3ed5e9c86beee809564069#3efa6d855dc40b395c3ed5e9c86beee809564069"
 dependencies = [
  "ahash",
  "android-activity",
@@ -2854,4 +2842,19 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.48",
+]
+
+[[package]]
+name = "zune-core"
+version = "0.4.12"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3f423a2c17029964870cfaabb1f13dfab7d092a62a29a89264f4d36990ca414a"
+
+[[package]]
+name = "zune-jpeg"
+version = "0.4.11"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ec866b44a2a1fd6133d363f073ca1b179f438f99e7e5bfb1e33f7181facfe448"
+dependencies = [
+ "zune-core",
 ]

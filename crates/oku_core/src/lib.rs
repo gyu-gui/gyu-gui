@@ -27,7 +27,7 @@ use winit::event_loop::{ActiveEventLoop, ControlFlow, EventLoop, EventLoopBuilde
 use winit::keyboard::{Key, NamedKey};
 #[cfg(not(target_arch = "wasm32"))]
 use winit::platform::modifier_supplement::KeyEventExtModifierSupplement;
-use winit::window::Window;
+use winit::window::{Window, WindowId};
 
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::prelude::*;
@@ -49,6 +49,7 @@ pub struct OkuContext {
     render_context: Option<RenderContext>,
     application: Box<dyn Application>,
     element_tree: Option<Element>,
+    should_draw: bool,
 }
 
 pub struct RenderContext {
@@ -99,6 +100,8 @@ fn rgb_to_encoded_u32(r: u32, g: u32, b: u32) -> u32 {
 }
 use log::info;
 use log::Level;
+use winit::application::ApplicationHandler;
+
 pub fn main(application: Box<dyn Application>) {
     cfg_if::cfg_if! {
         if #[cfg(target_arch = "wasm32")] {
@@ -119,62 +122,26 @@ enum ActionRequestEvent {
     WakeUp,
 }
 
-fn async_main(application: Box<dyn Application>) {
-    info!("It works 2!");
-    let winit_event_loop = EventLoop::<ActionRequestEvent>::with_user_event().build().unwrap();
-    //let window = Rc::new(Window::default_attributes().(&winit_event_loop).unwrap());
-    //window.set_title("Oku");
+impl ApplicationHandler<ActionRequestEvent> for OkuContext {
+    fn resumed(&mut self, event_loop: &ActiveEventLoop) {
+        create_window(self, event_loop);
+    }
 
-    let access_kit_state = State::new();
-    /*let adapter = {
-        let access_kit_state = Arc::clone(&access_kit_state);
-        Adapter::new(
-            &window,
-            move || {
-                let mut state = access_kit_state.lock().unwrap();
-                state.build_initial_tree()
-            },
-            winit_event_loop.create_proxy(),
-        )
-    };*/
-
-    let mut oku_context = OkuContext {
-        render_context: None,
-        application,
-        element_tree: None,
-    };
-
-    winit_event_loop
-        .run(move |event, event_loop_window_target| {
-            event_loop(&mut oku_context, event, event_loop_window_target);
-        })
-        .unwrap();
-}
-
-fn event_loop(app: &mut OkuContext, event: Event<ActionRequestEvent>, event_loop_window_target: &ActiveEventLoop) {
-    event_loop_window_target.set_control_flow(ControlFlow::Wait);
-    let mut should_draw = false;
-
-    /*// Create the first tree
-    if app.borrow_mut().element_tree.is_none() {
-        should_draw = true;
-    }*/
-
-    match event {
-        Event::WindowEvent { window_id, event } => match event {
+    fn window_event(&mut self, event_loop: &ActiveEventLoop, window_id: WindowId, event: WindowEvent) {
+        match event {
             WindowEvent::ActivationTokenDone { .. } => {}
-            WindowEvent::Resized(size) => {
-                if let Some(render_context) = &mut app.render_context {
-                    let width = size.width;
-                    let height = size.height;
+            WindowEvent::Resized(new_size) => {
+                if let Some(render_context) = &mut self.render_context {
+                    let width = new_size.width;
+                    let height = new_size.height;
                     render_context.surface.resize(NonZeroU32::new(width).unwrap(), NonZeroU32::new(height).unwrap()).unwrap();
                     render_context.canvas = Pixmap::new(width, height).unwrap();
-                    should_draw = true;
+                    self.should_draw = true;
                 }
             }
             WindowEvent::Moved(_) => {}
             WindowEvent::CloseRequested => {
-                event_loop_window_target.exit();
+                event_loop.exit();
             }
             WindowEvent::Destroyed => {}
             WindowEvent::DroppedFile(_) => {}
@@ -191,9 +158,9 @@ fn event_loop(app: &mut OkuContext, event: Event<ActionRequestEvent>, event_loop
                         if #[cfg(target_arch = "wasm32")] {
                         } else {
                             if let Key::Named(NamedKey::F3) = _event.key_without_modifiers().as_ref() {
-                        if let Some(render_context) = &mut app.render_context {
+                        if let Some(render_context) = &mut self.render_context {
                             render_context.debug_draw = !render_context.debug_draw;
-                            should_draw = true;
+                            self.should_draw = true;
                         }
                     }
                         }
@@ -216,25 +183,48 @@ fn event_loop(app: &mut OkuContext, event: Event<ActionRequestEvent>, event_loop
             WindowEvent::ScaleFactorChanged { .. } => {}
             WindowEvent::ThemeChanged(_) => {}
             WindowEvent::Occluded(_) => {}
-            WindowEvent::RedrawRequested => {
-                should_draw = true;
-            }
-        },
-        Event::Resumed => {
-            create_window(app, event_loop_window_target);
+            WindowEvent::RedrawRequested => {}
         }
-        Event::NewEvents(_) => {}
-        Event::DeviceEvent { .. } => {}
-        Event::UserEvent(_) => {}
-        Event::Suspended => {
-            app.render_context = None;
-        }
-        Event::AboutToWait => {}
-        Event::LoopExiting => {}
-        Event::MemoryWarning => {}
+    }
+}
+
+fn async_main(application: Box<dyn Application>) {
+    let winit_event_loop = EventLoop::<ActionRequestEvent>::with_user_event().build().unwrap();
+    //let window = Rc::new(Window::default_attributes().(&winit_event_loop).unwrap());
+    //window.set_title("Oku");
+
+    let access_kit_state = State::new();
+    /*let adapter = {
+        let access_kit_state = Arc::clone(&access_kit_state);
+        Adapter::new(
+            &window,
+            move || {
+                let mut state = access_kit_state.lock().unwrap();
+                state.build_initial_tree()
+            },
+            winit_event_loop.create_proxy(),
+        )
+    };*/
+
+    let mut oku_context = OkuContext {
+        render_context: None,
+        application,
+        element_tree: None,
+        should_draw: false,
     };
 
-    if !should_draw || app.render_context.is_none() {
+    winit_event_loop.run_app(&mut oku_context).unwrap();
+}
+
+fn event_loop(app: &mut OkuContext, event: Event<ActionRequestEvent>, event_loop_window_target: &ActiveEventLoop) {
+    event_loop_window_target.set_control_flow(ControlFlow::Wait);
+
+    /*// Create the first tree
+    if app.borrow_mut().element_tree.is_none() {
+        should_draw = true;
+    }*/
+
+    if !app.should_draw || app.render_context.is_none() {
         return;
     }
 
