@@ -1,6 +1,8 @@
 pub mod application;
 pub mod components;
 pub mod elements;
+//mod lib2;
+mod renderer;
 mod widget_id;
 
 use crate::application::Application;
@@ -26,6 +28,7 @@ use wgpu::{Device, Queue, RenderPipeline, Surface, SurfaceConfiguration};
 const WAIT_TIME: time::Duration = time::Duration::from_millis(100);
 
 struct App<'a> {
+    app: Box<dyn Application + Send>,
     window: Option<Arc<Window>>,
     wgpu_instance: wgpu::Instance,
     renderer: Option<RenderState<'a>>,
@@ -69,7 +72,7 @@ enum Message {
     Resize(PhysicalSize<u32>),
 }
 
-pub fn oku_main(application: Box<dyn Application>) {
+pub fn oku_main(application: Box<dyn Application + Send>) {
     let rt = tokio::runtime::Builder::new_multi_thread().enable_all().build().expect("Failed to create runtime");
 
     let event_loop = EventLoop::new().unwrap();
@@ -78,7 +81,7 @@ pub fn oku_main(application: Box<dyn Application>) {
     let (app_to_winit_tx, app_to_winit_rx) = mpsc::channel::<(u64, Message)>(100);
 
     rt.spawn(async move {
-        async_main(winit_to_app_rx, app_to_winit_tx).await;
+        async_main(application, winit_to_app_rx, app_to_winit_tx).await;
     });
 
     let mut app = ControlFlowDemo {
@@ -201,8 +204,9 @@ impl ApplicationHandler for ControlFlowDemo {
     }
 }
 
-async fn async_main(mut rx: mpsc::Receiver<(u64, Message)>, mut tx: mpsc::Sender<(u64, Message)>) {
+async fn async_main(application: Box<dyn Application + Send>, mut rx: mpsc::Receiver<(u64, Message)>, mut tx: mpsc::Sender<(u64, Message)>) {
     let mut app = App {
+        app: application,
         window: None,
         wgpu_instance: wgpu::Instance::default(),
         renderer: None,
