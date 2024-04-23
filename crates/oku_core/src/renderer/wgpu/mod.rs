@@ -1,3 +1,4 @@
+use std::mem::size_of;
 use glam;
 use std::sync::{Arc};
 use wgpu::util::DeviceExt;
@@ -8,6 +9,7 @@ use crate::renderer::renderer::{Rectangle, Renderer};
 pub struct WgpuRenderer<'a> {
     device: wgpu::Device,
     surface: wgpu::Surface<'a>,
+    surface_clear_color: Color,
     surface_config: wgpu::SurfaceConfiguration,
     queue: wgpu::Queue,
     camera: Camera,
@@ -239,6 +241,7 @@ impl<'a> WgpuRenderer<'a> {
         return WgpuRenderer {
             device,
             surface,
+            surface_clear_color: Color::new_from_rgba_u8(255, 255, 255, 255),
             surface_config,
             queue,
             camera,
@@ -279,12 +282,12 @@ impl Renderer for WgpuRenderer<'_> {
         let y = rectangle.y;
         let width = rectangle.width;
         let height = rectangle.height;
-        
+
         let top_left = [x, y, 0.0];
         let bottom_left = [x, y + height, 0.0];
         let top_right = [x + width, y, 0.0];
         let bottom_right = [x + width, y + height, 0.0];
-        
+
         let color = [fill_color.r, fill_color.g, fill_color.b, fill_color.a];
 
         self.rectangle_vertices.append(&mut vec![
@@ -317,8 +320,21 @@ impl Renderer for WgpuRenderer<'_> {
             label: Some("Render Encoder"),
         });
 
+
         let output = self.surface.get_current_texture().unwrap();
         let texture_view = output.texture.create_view(&wgpu::TextureViewDescriptor::default());
+
+        let width = output.texture.width() as f32;
+        let height = output.texture.height() as f32;
+        self.camera = Camera {
+            width,
+            height,
+            znear: 0.0,
+            zfar: 100.0,
+        };
+
+        self.camera_uniform.update_view_proj(&self.camera);
+        self.queue.write_buffer(&self.camera_buffer, 0, bytemuck::cast_slice(&[self.camera_uniform.view_proj]));
 
         {
             let mut _render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
@@ -328,10 +344,10 @@ impl Renderer for WgpuRenderer<'_> {
                     resolve_target: None,
                     ops: wgpu::Operations {
                         load: wgpu::LoadOp::Clear(wgpu::Color {
-                            r: 1.0,
-                            g: 1.0,
-                            b: 1.0,
-                            a: 1.0,
+                            r: self.surface_clear_color.r as f64,
+                            g: self.surface_clear_color.g as f64,
+                            b: self.surface_clear_color.b as f64,
+                            a: self.surface_clear_color.a as f64,
                         }),
                         store: wgpu::StoreOp::Store,
                     },
@@ -351,19 +367,12 @@ impl Renderer for WgpuRenderer<'_> {
         self.queue.submit(std::iter::once(encoder.finish()));
         output.present();
 
-        self.rectangle_indices = vec![];
-        self.rectangle_vertices = vec![];
+        self.rectangle_indices.clear();
+        self.rectangle_vertices.clear();
     }
-}
 
-struct RenderContext {
-    pub renderer: Box<dyn Renderer + Send>,
-    window: Arc<Window>,
-}
-
-impl RenderContext {
-    async fn new(window: Arc<Window>, renderer: Box<dyn Renderer + Send>) -> RenderContext {
-        RenderContext { renderer, window }
+    fn surface_set_clear_color(&mut self, color: Color) {
+        self.surface_clear_color = color;
     }
 }
 

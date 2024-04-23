@@ -26,7 +26,7 @@ use winit::window::{Window, WindowId};
 use wgpu::{Device, Queue, RenderPipeline, Surface, SurfaceConfiguration};
 use crate::renderer::color::Color;
 use crate::renderer::renderer::{Rectangle, Renderer};
-use crate::renderer::softbuffer::SoftBufferRenderer;
+use crate::renderer::softbuffer::SoftwareRenderer;
 use crate::renderer::wgpu::WgpuRenderer;
 
 const WAIT_TIME: time::Duration = time::Duration::from_millis(100);
@@ -193,7 +193,7 @@ impl ApplicationHandler for OkuState {
     }
 }
 
-unsafe impl Send for SoftBufferRenderer {
+unsafe impl Send for SoftwareRenderer {
     // Implement Send trait for SoftBufferRenderer
     // Ensure that all fields are Send
 }
@@ -211,6 +211,7 @@ async fn async_main(application: Box<dyn Application + Send>, mut rx: mpsc::Rece
                 Message::RequestRedraw => {
                     let renderer = app.renderer.as_mut().unwrap();
                     
+                    renderer.surface_set_clear_color(Color::new_from_rgba_u8(22, 0, 100, 255));
                     renderer.draw_rect(Rectangle::new(0.0, 0.0, 200.0, 200.0), Color::new_from_rgba_u8(0, 255, 0, 255));
                     renderer.draw_rect(Rectangle::new(300.0, 30.0, 200.0, 200.0), Color::new_from_rgba_u8(0, 0, 255, 255));
                     
@@ -229,23 +230,16 @@ async fn async_main(application: Box<dyn Application + Send>, mut rx: mpsc::Rece
                 Message::Resume(window) => {
                     println!("Resumed");
 
-                    let size = window.inner_size();
-
                     app.window = Some(window.clone());
-                    let a = Box::new(WgpuRenderer::new(window.clone()).await);
-                    //let a = Box::new(SoftBufferRenderer::new(window.clone(), size.width as f32, size.height as f32));
-                    app.renderer = Some(a);
+                    let renderer = Box::new(WgpuRenderer::new(window.clone()).await);
+                    //let renderer = Box::new(SoftwareRenderer::new(window.clone()));
+                    app.renderer = Some(renderer);
 
                     tx.send((id, Message::None)).await.expect("send failed");
                 }
                 Message::Resize(new_size) => {
-
-                    // Reconfigure the surface with the new size
-
                     let renderer = app.renderer.as_mut().unwrap();
-
                     renderer.resize_surface(new_size.width.max(1) as f32, new_size.height.max(1) as f32);
-
                     // On macOS the window needs to be redrawn manually after resizing
                     app.window.as_ref().unwrap().request_redraw();
 
