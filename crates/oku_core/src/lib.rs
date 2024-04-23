@@ -218,23 +218,10 @@ async fn async_main(application: Box<dyn Application + Send>, mut rx: mpsc::Rece
         if let Some((id, msg)) = rx.recv().await {
             match msg {
                 Message::RequestRedraw => {
-                    println!("request_redraw");
-
-                    let mut renderer = app.renderer.as_mut().unwrap();
+                    let renderer = app.renderer.as_mut().unwrap();
                     
-                    renderer.draw_rect(Rectangle {
-                        x: 0.0,
-                        y: 0.0,
-                        width: 200.0,
-                        height: 200.0,
-                    }, Color::new_from_rgba_u8(0, 255, 0, 255));
-
-                    renderer.draw_rect(Rectangle {
-                        x: 300.0,
-                        y: 30.0,
-                        width: 200.0,
-                        height: 200.0,
-                    }, Color::new_from_rgba_u8(0, 0, 255, 255));
+                    renderer.draw_rect(Rectangle::new(0.0, 0.0, 200.0, 200.0), Color::new_from_rgba_u8(0, 255, 0, 255));
+                    renderer.draw_rect(Rectangle::new(300.0, 30.0, 200.0, 200.0), Color::new_from_rgba_u8(0, 0, 255, 255));
                     
                     renderer.submit();
 

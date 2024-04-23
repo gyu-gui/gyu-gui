@@ -9,7 +9,7 @@ pub struct Rectangle {
 }
 
 impl Rectangle {
-    fn new(x: f32, y: f32, width: f32, height: f32) -> Self {
+    pub fn new(x: f32, y: f32, width: f32, height: f32) -> Self {
         Rectangle {
             x,
             y,
@@ -39,5 +39,6 @@ pub trait Renderer {
     
     
     fn draw_rect(&mut self, rectangle: Rectangle, fill_color: Color);
+    
     fn submit(&mut self);
 }

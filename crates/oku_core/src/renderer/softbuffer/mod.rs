@@ -39,7 +39,7 @@ fn draw_rect(canvas: &mut Pixmap, rectangle: Rectangle, fill_color: Color) {
     paint.set_color_rgba8(fill_color.r_u8(), fill_color.g_u8(), fill_color.b_u8(), fill_color.a_u8());
     paint.anti_alias = true;
 
-    
+
     let rect = Rect::from_xywh(rectangle.x, rectangle.y, rectangle.width, rectangle.height).unwrap();
     canvas.fill_rect(rect, &paint, Transform::identity(), None);
 }
