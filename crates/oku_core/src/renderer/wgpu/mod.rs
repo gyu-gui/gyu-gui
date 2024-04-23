@@ -266,7 +266,7 @@ impl Renderer for WgpuRenderer<'_> {
     }
 
     fn resize_surface(&mut self, width: f32, height: f32) {
-        println!("{}, {}", width, height);
+        //println!("{}, {}", width, height);
         self.surface_config.width = width as u32;
         self.surface_config.height = height as u32;
         self.surface.configure(&self.device, &self.surface_config);

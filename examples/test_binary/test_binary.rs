@@ -35,9 +35,9 @@ impl Component for Hello {
     fn view(&self, props: Option<&Props>, children: Vec<Element>) -> Element {
         let (data, mut set_data) = use_state(String::from("foo"));
 
-        println!("data: {}", data());
+        //println!("data: {}", data());
         set_data(String::from("bar"));
-        println!("data: {}", data());
+        //println!("data: {}", data());
 
         let my_data = props.unwrap().get_data::<u32>().unwrap();
         let mut container = Container::new().add_child(Element::Text(Text::new(format!("Hello, world! {}", my_data))));

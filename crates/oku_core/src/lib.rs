@@ -96,8 +96,6 @@ pub fn oku_main(application: Box<dyn Application + Send>) {
 
 impl ApplicationHandler for OkuState {
     fn new_events(&mut self, _event_loop: &ActiveEventLoop, cause: StartCause) {
-        //println!("new_events: {cause:?}");
-
         self.wait_cancelled = match cause {
             StartCause::WaitCancelled { .. } => true,
             _ => false,
@@ -112,10 +110,7 @@ impl ApplicationHandler for OkuState {
         let id = self.id;
         self.rt.block_on(async {
             self.winit_to_app_tx.send((id, Message::Resume(window.clone()))).await.expect("send failed");
-            if let Some((id, Message::None)) = self.app_to_winit_rx.recv().await {
-                //println!("Resume Done: {}", id);
-            }
-            let x = self.winit_to_app_tx.send((id, Message::Resume(window.clone())));
+            if let Some((_id, Message::None)) = self.app_to_winit_rx.recv().await {}
         });
         self.id += 1;
     }
@@ -166,9 +161,7 @@ impl ApplicationHandler for OkuState {
                 self.rt.block_on(async {
                     let id = self.id;
                     self.winit_to_app_tx.send((id, Message::RequestRedraw)).await.expect("send failed");
-                    if let Some((id, Message::None)) = self.app_to_winit_rx.recv().await {
-                        //println!("Redraw Done: {}", id);
-                    }
+                    if let Some((id, Message::None)) = self.app_to_winit_rx.recv().await {}
                 });
 
                 let window = self.window.as_ref().unwrap();
@@ -209,7 +202,6 @@ async fn async_main(application: Box<dyn Application + Send>, mut rx: mpsc::Rece
         if let Some((id, msg)) = rx.recv().await {
             match msg {
                 Message::RequestRedraw => {
-                    println!("request_redraw\n\n\n");
                     let renderer = app.renderer.as_mut().unwrap();
 
                     renderer.surface_set_clear_color(Color::new_from_rgba_u8(22, 0, 100, 255));
@@ -221,16 +213,11 @@ async fn async_main(application: Box<dyn Application + Send>, mut rx: mpsc::Rece
                     tx.send((id, Message::None)).await.expect("send failed");
                 }
                 Message::Close => {
-                    //println!("close");
                     tx.send((id, Message::None)).await.expect("send failed");
                     break;
                 }
-                Message::None => {
-                    //println!("none");
-                }
+                Message::None => {}
                 Message::Resume(window) => {
-                    //println!("Resumed");
-
                     app.window = Some(window.clone());
                     let renderer = Box::new(WgpuRenderer::new(window.clone()).await);
                     //let renderer = Box::new(SoftwareRenderer::new(window.clone()));
@@ -239,7 +226,6 @@ async fn async_main(application: Box<dyn Application + Send>, mut rx: mpsc::Rece
                     tx.send((id, Message::None)).await.expect("send failed");
                 }
                 Message::Resize(new_size) => {
-                    println!("Resized: {:?}", new_size);
                     let renderer = app.renderer.as_mut().unwrap();
                     renderer.resize_surface(new_size.width.max(1) as f32, new_size.height.max(1) as f32);
 
@@ -250,7 +236,5 @@ async fn async_main(application: Box<dyn Application + Send>, mut rx: mpsc::Rece
                 }
             }
         }
-
-        //println!("Message processed");
     }
 }
