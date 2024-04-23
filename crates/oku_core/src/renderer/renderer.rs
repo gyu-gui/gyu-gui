@@ -1,3 +1,5 @@
+use crate::renderer::color::Color;
+
 #[derive(Debug, Clone, Copy)]
 pub struct Rectangle {
     pub(crate) x: f32,
@@ -18,7 +20,7 @@ impl Rectangle {
 }
 
 pub enum RenderCommand {
-    DrawRect(Rectangle),
+    DrawRect(Rectangle, Color),
 }
 
 pub trait Surface {
@@ -36,6 +38,6 @@ pub trait Renderer {
     fn resize_surface(&mut self, width: f32, height: f32);
     
     
-    fn draw_rect(&mut self, rectangle: Rectangle);
+    fn draw_rect(&mut self, rectangle: Rectangle, fill_color: Color);
     fn submit(&mut self);
 }

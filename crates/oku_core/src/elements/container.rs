@@ -1,4 +1,3 @@
-use crate::elements::color::Color;
 use crate::elements::element::Element;
 use crate::elements::layout_context::LayoutContext;
 use crate::elements::standard_element::StandardElement;
@@ -7,6 +6,7 @@ use crate::RenderContext;
 use cosmic_text::FontSystem;
 use taffy::{NodeId, TaffyTree};
 use tiny_skia::{LineCap, LineJoin, Paint, PathBuilder, Rect, Transform};
+use crate::renderer::color::Color;
 
 #[derive(Clone, Default)]
 pub struct Container {

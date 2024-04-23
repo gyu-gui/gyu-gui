@@ -5,6 +5,7 @@ use std::sync::Arc;
 use softbuffer::Buffer;
 use tiny_skia::{LineCap, LineJoin, Paint, PathBuilder, Pixmap, Rect, Transform};
 use winit::window::Window;
+use crate::renderer::color::Color;
 
 pub struct SoftBufferRenderer {
     render_commands: Vec<RenderCommand>,
@@ -33,27 +34,14 @@ impl SoftBufferRenderer {
     }
 }
 
-fn draw_rect(canvas: &mut Pixmap, rectangle: Rectangle) {
+fn draw_rect(canvas: &mut Pixmap, rectangle: Rectangle, fill_color: Color) {
     let mut paint = Paint::default();
-    paint.set_color_rgba8(255, 0, 0, 255);
+    paint.set_color_rgba8(fill_color.r_u8(), fill_color.g_u8(), fill_color.b_u8(), fill_color.a_u8());
     paint.anti_alias = true;
 
-    let mut path_builder = PathBuilder::new();
-    path_builder.push_rect(Rect::from_xywh(rectangle.x, rectangle.y, rectangle.width, rectangle.height).unwrap());
-    let path = path_builder.finish().unwrap();
-
-    let stroke = tiny_skia::Stroke {
-        width: 3.0,
-        miter_limit: 100.0,
-        line_cap: LineCap::Butt,
-        line_join: LineJoin::Miter,
-
-        dash: None,
-        // Dashed lines
-        // dash: Some(StrokeDash::new(vec![2.0, 5.0], 5.0).unwrap()),
-    };
-
-    canvas.stroke_path(&path, &paint, &stroke, Transform::identity(), None);
+    
+    let rect = Rect::from_xywh(rectangle.x, rectangle.y, rectangle.width, rectangle.height).unwrap();
+    canvas.fill_rect(rect, &paint, Transform::identity(), None);
 }
 
 const fn rgb_to_encoded_u32(r: u32, g: u32, b: u32) -> u32 {
@@ -81,15 +69,15 @@ impl Renderer for SoftBufferRenderer {
         self.framebuffer = framebuffer;
     }
 
-    fn draw_rect(&mut self, rectangle: Rectangle) {
-        self.render_commands.push(RenderCommand::DrawRect(rectangle));
+    fn draw_rect(&mut self, rectangle: Rectangle, fill_color: Color) {
+        self.render_commands.push(RenderCommand::DrawRect(rectangle, fill_color));
     }
 
     fn submit(&mut self) {
         for command in self.render_commands.drain(..) {
             match command {
-                RenderCommand::DrawRect(rectangle) => {
-                    draw_rect(&mut self.framebuffer, rectangle);
+                RenderCommand::DrawRect(rectangle, fill_color) => {
+                    draw_rect(&mut self.framebuffer, rectangle, fill_color);
                 }
             }
         }

@@ -24,6 +24,7 @@ use winit::keyboard::{Key, NamedKey};
 use winit::window::{Window, WindowId};
 
 use wgpu::{Device, Queue, RenderPipeline, Surface, SurfaceConfiguration};
+use crate::renderer::color::Color;
 use crate::renderer::renderer::{Rectangle, Renderer};
 use crate::renderer::softbuffer::SoftBufferRenderer;
 
@@ -112,23 +113,16 @@ impl ApplicationHandler for OkuState {
     }
 
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
-        info!("resumed");
-        let window_attributes = Window::default_attributes().with_title("Press 1, 2, 3 to change control flow mode. Press R to toggle redraw requests.");
-        info!("resumed 4");
+        let window_attributes = Window::default_attributes().with_title("oku");
         let window = Arc::new(event_loop.create_window(window_attributes).unwrap());
-        info!("resumed 2");
         self.window = Some(window.clone());
 
         let id = self.id;
-        info!("resumed 3");
         self.rt.block_on(async {
             self.winit_to_app_tx.send((id, Message::Resume(window.clone()))).await.expect("send failed");
             if let Some((id, Message::None)) = self.app_to_winit_rx.recv().await {
                 println!("Resume Done: {}", id);
             }
-
-            // web code
-            info!("send message");
             let x = self.winit_to_app_tx.send((id, Message::Resume(window.clone())));
         });
         self.id += 1;
@@ -206,10 +200,12 @@ impl ApplicationHandler for OkuState {
         }
     }
 }
+
 unsafe impl Send for SoftBufferRenderer {
     // Implement Send trait for SoftBufferRenderer
     // Ensure that all fields are Send
 }
+
 async fn async_main(application: Box<dyn Application + Send>, mut rx: mpsc::Receiver<(u64, Message)>, mut tx: mpsc::Sender<(u64, Message)>) {
     let mut app = App {
         app: application,
@@ -231,7 +227,14 @@ async fn async_main(application: Box<dyn Application + Send>, mut rx: mpsc::Rece
                         y: 0.0,
                         width: 200.0,
                         height: 200.0,
-                    });
+                    }, Color::new_from_rgba_u8(0, 255, 0, 255));
+
+                    renderer.draw_rect(Rectangle {
+                        x: 300.0,
+                        y: 30.0,
+                        width: 200.0,
+                        height: 200.0,
+                    }, Color::new_from_rgba_u8(0, 0, 255, 255));
                     
                     renderer.submit();
 

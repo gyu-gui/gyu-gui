@@ -7,7 +7,7 @@ pub struct Color {
 }
 
 impl Color {
-    pub fn new_from_rgba_u8(r: u8, g: u8, b: u8, a: u8) -> Color {
+    pub const fn new_from_rgba_u8(r: u8, g: u8, b: u8, a: u8) -> Color {
         Color {
             r: r as f32,
             g: g as f32,
@@ -16,7 +16,7 @@ impl Color {
         }
     }
 
-    pub fn new_from_rgba_f32(r: f32, g: f32, b: f32, a: f32) -> Color {
+    pub const fn new_from_rgba_f32(r: f32, g: f32, b: f32, a: f32) -> Color {
         Color { r, g, b, a }
     }
 
@@ -38,19 +38,12 @@ impl Color {
         format!("#{:02x}{:02x}{:02x}{:02x}", self.r as u8, self.g as u8, self.b as u8, self.a as u8)
     }
 
-    pub fn r_u8(&self) -> u8 {
+    pub const fn r_u8(&self) -> u8 {
         self.r as u8
     }
-
-    pub fn g_u8(&self) -> u8 {
-        self.g as u8
-    }
-
-    pub fn b_u8(&self) -> u8 {
+    pub const fn g_u8(&self) -> u8 { self.g as u8 }
+    pub const fn b_u8(&self) -> u8 {
         self.b as u8
     }
-
-    pub fn a_u8(&self) -> u8 {
-        self.a as u8
-    }
+    pub const fn a_u8(&self) -> u8 { self.a as u8 }
 }
