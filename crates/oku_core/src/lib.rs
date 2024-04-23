@@ -23,18 +23,18 @@ use winit::event_loop::{ActiveEventLoop, ControlFlow, EventLoop};
 use winit::keyboard::{Key, NamedKey};
 use winit::window::{Window, WindowId};
 
-use wgpu::{Device, Queue, RenderPipeline, Surface, SurfaceConfiguration};
 use crate::renderer::color::Color;
 use crate::renderer::renderer::{Rectangle, Renderer};
 use crate::renderer::softbuffer::SoftwareRenderer;
 use crate::renderer::wgpu::WgpuRenderer;
+use wgpu::{Device, Queue, RenderPipeline, Surface, SurfaceConfiguration};
 
 const WAIT_TIME: time::Duration = time::Duration::from_millis(100);
 
 struct App {
     app: Box<dyn Application + Send>,
     window: Option<Arc<Window>>,
-    renderer: Option<Box<dyn Renderer + Send>>
+    renderer: Option<Box<dyn Renderer + Send>>,
 }
 
 pub struct RenderContext {
@@ -56,7 +56,7 @@ struct OkuState {
     close_requested: bool,
     window: Option<Arc<Window>>,
     app_to_winit_rx: mpsc::Receiver<(u64, Message)>,
-    winit_to_app_tx: mpsc::Sender<(u64, Message)>
+    winit_to_app_tx: mpsc::Sender<(u64, Message)>,
 }
 
 #[derive(Debug, Clone)]
@@ -88,7 +88,7 @@ pub fn oku_main(application: Box<dyn Application + Send>) {
         close_requested: false,
         window: None,
         app_to_winit_rx,
-        winit_to_app_tx
+        winit_to_app_tx,
     };
 
     event_loop.run_app(&mut app).expect("run_app failed");
@@ -113,7 +113,7 @@ impl ApplicationHandler for OkuState {
         self.rt.block_on(async {
             self.winit_to_app_tx.send((id, Message::Resume(window.clone()))).await.expect("send failed");
             if let Some((id, Message::None)) = self.app_to_winit_rx.recv().await {
-                println!("Resume Done: {}", id);
+                //println!("Resume Done: {}", id);
             }
             let x = self.winit_to_app_tx.send((id, Message::Resume(window.clone())));
         });
@@ -129,7 +129,7 @@ impl ApplicationHandler for OkuState {
                 self.rt.block_on(async {
                     self.winit_to_app_tx.send((id, Message::Close)).await.expect("send failed");
                     if let Some((id, Message::None)) = self.app_to_winit_rx.recv().await {
-                        println!("Close Done: {}", id);
+                        //println!("Close Done: {}", id);
                     }
                 });
                 self.id += 1;
@@ -140,7 +140,7 @@ impl ApplicationHandler for OkuState {
                 self.rt.block_on(async {
                     self.winit_to_app_tx.send((id, Message::Resize(new_size))).await.expect("send failed");
                     if let Some((id, Message::None)) = self.app_to_winit_rx.recv().await {
-                        println!("Resize Done: {}", id);
+                        //println!("Resize Done: {}", id);
                     }
                 });
                 self.id += 1;
@@ -155,7 +155,7 @@ impl ApplicationHandler for OkuState {
             } => match key.as_ref() {
                 Key::Character("r") => {
                     self.request_redraw = !self.request_redraw;
-                    println!("\nrequest_redraw: {}\n", self.request_redraw);
+                    //println!("\nrequest_redraw: {}\n", self.request_redraw);
                 }
                 Key::Named(NamedKey::Escape) => {
                     self.close_requested = true;
@@ -167,7 +167,7 @@ impl ApplicationHandler for OkuState {
                     let id = self.id;
                     self.winit_to_app_tx.send((id, Message::RequestRedraw)).await.expect("send failed");
                     if let Some((id, Message::None)) = self.app_to_winit_rx.recv().await {
-                        println!("Redraw Done: {}", id);
+                        //println!("Redraw Done: {}", id);
                     }
                 });
 
@@ -209,26 +209,27 @@ async fn async_main(application: Box<dyn Application + Send>, mut rx: mpsc::Rece
         if let Some((id, msg)) = rx.recv().await {
             match msg {
                 Message::RequestRedraw => {
+                    println!("request_redraw\n\n\n");
                     let renderer = app.renderer.as_mut().unwrap();
-                    
+
                     renderer.surface_set_clear_color(Color::new_from_rgba_u8(22, 0, 100, 255));
                     renderer.draw_rect(Rectangle::new(0.0, 0.0, 200.0, 200.0), Color::new_from_rgba_u8(0, 255, 0, 255));
                     renderer.draw_rect(Rectangle::new(300.0, 30.0, 200.0, 200.0), Color::new_from_rgba_u8(0, 0, 255, 255));
-                    
+
                     renderer.submit();
 
                     tx.send((id, Message::None)).await.expect("send failed");
                 }
                 Message::Close => {
-                    println!("close");
+                    //println!("close");
                     tx.send((id, Message::None)).await.expect("send failed");
                     break;
                 }
                 Message::None => {
-                    println!("none");
+                    //println!("none");
                 }
                 Message::Resume(window) => {
-                    println!("Resumed");
+                    //println!("Resumed");
 
                     app.window = Some(window.clone());
                     let renderer = Box::new(WgpuRenderer::new(window.clone()).await);
@@ -238,8 +239,10 @@ async fn async_main(application: Box<dyn Application + Send>, mut rx: mpsc::Rece
                     tx.send((id, Message::None)).await.expect("send failed");
                 }
                 Message::Resize(new_size) => {
+                    println!("Resized: {:?}", new_size);
                     let renderer = app.renderer.as_mut().unwrap();
                     renderer.resize_surface(new_size.width.max(1) as f32, new_size.height.max(1) as f32);
+
                     // On macOS the window needs to be redrawn manually after resizing
                     app.window.as_ref().unwrap().request_redraw();
 
@@ -248,6 +251,6 @@ async fn async_main(application: Box<dyn Application + Send>, mut rx: mpsc::Rece
             }
         }
 
-        println!("Message processed");
+        //println!("Message processed");
     }
 }

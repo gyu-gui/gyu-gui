@@ -1,10 +1,11 @@
-use std::mem::size_of;
-use glam;
-use std::sync::{Arc};
-use wgpu::util::DeviceExt;
-use winit::window::{Window};
 use crate::renderer::color::Color;
 use crate::renderer::renderer::{Rectangle, Renderer};
+use glam;
+use std::mem::size_of;
+use std::sync::Arc;
+use wgpu::util::DeviceExt;
+use wgpu::PresentMode;
+use winit::window::Window;
 
 pub struct WgpuRenderer<'a> {
     device: wgpu::Device,
@@ -53,20 +54,13 @@ impl<'a> WgpuRenderer<'a> {
             .unwrap();
 
         let surface_caps = surface.get_capabilities(&adapter);
-        let surface_format = surface_caps
-            .formats
-            .iter()
-            .copied()
-            // Filter for SRGB compatible surfaces.
-            .filter(|f| f.is_srgb())
-            .next()
-            .unwrap_or(surface_caps.formats[0]);
+        let surface_format = surface_caps.formats.iter().copied().find(|f| f.is_srgb()).unwrap_or(surface_caps.formats[0]);
         let surface_config = wgpu::SurfaceConfiguration {
             usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
             format: surface_format,
             width: window.inner_size().width,
             height: window.inner_size().height,
-            present_mode: surface_caps.present_modes[0],
+            present_mode: PresentMode::Fifo,
             desired_maximum_frame_latency: 0,
             alpha_mode: surface_caps.alpha_modes[0],
             view_formats: vec![],
@@ -210,11 +204,13 @@ impl<'a> WgpuRenderer<'a> {
             vertex: wgpu::VertexState {
                 module: &shader,
                 entry_point: "vs_main",
+                compilation_options: Default::default(),
                 buffers: &[Vertex::description()],
             },
             fragment: Some(wgpu::FragmentState {
                 module: &shader,
                 entry_point: "fs_main",
+                compilation_options: Default::default(),
                 targets: &[Some(wgpu::ColorTargetState {
                     format: surface_config.format,
                     blend: Some(wgpu::BlendState::REPLACE),
@@ -238,7 +234,7 @@ impl<'a> WgpuRenderer<'a> {
             multiview: None,
         });
 
-        return WgpuRenderer {
+        WgpuRenderer {
             device,
             surface,
             surface_clear_color: Color::new_from_rgba_u8(255, 255, 255, 255),
@@ -252,12 +248,11 @@ impl<'a> WgpuRenderer<'a> {
             rectangle_bind_group: oku_bind_group,
             rectangle_vertices: vec![],
             rectangle_indices: vec![],
-        };
+        }
     }
 }
 
 impl Renderer for WgpuRenderer<'_> {
-
     fn surface_width(&self) -> f32 {
         self.surface_config.width as f32
     }
@@ -271,13 +266,22 @@ impl Renderer for WgpuRenderer<'_> {
     }
 
     fn resize_surface(&mut self, width: f32, height: f32) {
+        println!("{}, {}", width, height);
         self.surface_config.width = width as u32;
         self.surface_config.height = height as u32;
         self.surface.configure(&self.device, &self.surface_config);
+        self.camera = Camera {
+            width,
+            height,
+            znear: 0.0,
+            zfar: 100.0,
+        };
+
+        self.camera_uniform.update_view_proj(&self.camera);
+        self.queue.write_buffer(&self.camera_buffer, 0, bytemuck::cast_slice(&[self.camera_uniform.view_proj]));
     }
 
     fn draw_rect(&mut self, rectangle: Rectangle, fill_color: Color) {
-
         let x = rectangle.x;
         let y = rectangle.y;
         let width = rectangle.width;
@@ -291,16 +295,30 @@ impl Renderer for WgpuRenderer<'_> {
         let color = [fill_color.r, fill_color.g, fill_color.b, fill_color.a];
 
         self.rectangle_vertices.append(&mut vec![
-            Vertex { position: top_left, color, tex_coords: [0.0, 0.0], },
-            Vertex { position: bottom_left, color, tex_coords: [0.0, 1.0], },
-            Vertex { position: top_right, color, tex_coords: [1.0, 0.0], },
-            Vertex { position: bottom_right, color, tex_coords: [1.0, 1.0], }]
-        );
+            Vertex {
+                position: top_left,
+                color,
+                tex_coords: [0.0, 0.0],
+            },
+            Vertex {
+                position: bottom_left,
+                color,
+                tex_coords: [0.0, 1.0],
+            },
+            Vertex {
+                position: top_right,
+                color,
+                tex_coords: [1.0, 0.0],
+            },
+            Vertex {
+                position: bottom_right,
+                color,
+                tex_coords: [1.0, 1.0],
+            },
+        ]);
 
         let next_starting_index: u32 = (self.rectangle_indices.len() / 6) as u32 * 4;
-        self.rectangle_indices.append(&mut vec![
-            next_starting_index + 0, next_starting_index + 1, next_starting_index + 2, next_starting_index + 2, next_starting_index + 1, next_starting_index + 3
-        ]);
+        self.rectangle_indices.append(&mut vec![next_starting_index + 0, next_starting_index + 1, next_starting_index + 2, next_starting_index + 2, next_starting_index + 1, next_starting_index + 3]);
     }
 
     fn submit(&mut self) {
@@ -320,21 +338,11 @@ impl Renderer for WgpuRenderer<'_> {
             label: Some("Render Encoder"),
         });
 
-
         let output = self.surface.get_current_texture().unwrap();
         let texture_view = output.texture.create_view(&wgpu::TextureViewDescriptor::default());
 
         let width = output.texture.width() as f32;
         let height = output.texture.height() as f32;
-        self.camera = Camera {
-            width,
-            height,
-            znear: 0.0,
-            zfar: 100.0,
-        };
-
-        self.camera_uniform.update_view_proj(&self.camera);
-        self.queue.write_buffer(&self.camera_buffer, 0, bytemuck::cast_slice(&[self.camera_uniform.view_proj]));
 
         {
             let mut _render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
@@ -413,7 +421,7 @@ impl Camera {
     fn build_view_projection_matrix(&self) -> glam::Mat4 {
         let view = glam::Mat4::IDENTITY;
         let proj = glam::Mat4::orthographic_lh(0.0, self.width, self.height, 0.0, self.znear, self.zfar);
-        return proj * view;
+        proj * view
     }
 }
 

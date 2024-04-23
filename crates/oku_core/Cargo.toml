@@ -7,7 +7,7 @@ resolver = "2"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [dependencies]
 
-winit = { git = "https://github.com/rust-windowing/winit", rev = "babbb715c572503291dae5f4bf64665d4f36ec09" }
+winit = { git = "https://github.com/rust-windowing/winit", rev = "7006c7ceca948942914c42193fdd0b90e2dc50d5" }
 tiny-skia = "0.11.4"
 softbuffer = "0.4.2"
 cosmic-text = { git = "https://github.com/pop-os/cosmic-text", rev = "ff5501d9a36e51c50d908413caf7632d8f7533b7" }
@@ -21,7 +21,7 @@ log = "0.4.21"
 # SSE2 is enabled by default on x86_64 targets.
 glam = { version = "0.27.0" }
 env_logger = { version = "0.11.3" }
-wgpu = { version = "0.19.4" }
+wgpu = { git = "https://github.com/gfx-rs/wgpu", rev = "edf1a86148d1a62da857633fb224aa569f21ce4e" }
 bytemuck = { version = "1.15.0", features = ["derive"] }
 image = { version = "0.25.1", default-features = false, features = ["png", "jpeg"] }
 
@@ -37,7 +37,7 @@ web-sys = { version = "0.3.69", features = [
     "Element",
 ] }
 console_log = "1.0"
-wgpu = { version = "0.19.3", features = ["webgpu"] }
+#wgpu = { version = "0.19.3", features = ["webgpu"] }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 tokio = { version = "1.37.0", features = ["full"] }
