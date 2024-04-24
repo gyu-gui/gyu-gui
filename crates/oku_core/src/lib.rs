@@ -5,16 +5,14 @@ pub mod elements;
 pub mod renderer;
 mod widget_id;
 
+#[cfg(test)]
+mod tests;
+
 use crate::application::Application;
 use crate::elements::element::Element;
 use cosmic_text::{FontSystem, SwashCache};
-use log::info;
-//use softbuffer::Surface;
-use std::borrow::Cow;
-use std::rc::Rc;
 use std::sync::Arc;
-use std::{thread, time};
-use tiny_skia::Pixmap;
+use std::time;
 use tokio::sync::mpsc;
 use winit::application::ApplicationHandler;
 use winit::dpi::PhysicalSize;
@@ -31,7 +29,6 @@ use crate::renderer::color::Color;
 use crate::renderer::renderer::{Rectangle, Renderer};
 use crate::renderer::softbuffer::SoftwareRenderer;
 use crate::renderer::wgpu::WgpuRenderer;
-use wgpu::{Device, Queue, RenderPipeline, Surface, SurfaceConfiguration};
 
 const WAIT_TIME: time::Duration = time::Duration::from_millis(100);
 
@@ -56,7 +53,7 @@ struct OkuState {
     close_requested: bool,
     window: Option<Arc<Window>>,
     app_to_winit_rx: mpsc::Receiver<(u64, Message)>,
-    winit_to_app_tx: mpsc::Sender<(u64, Message)>,
+    winit_to_app_tx: mpsc::Sender<(u64, bool, Message)>,
 }
 
 #[derive(Debug, Clone)]
@@ -73,7 +70,7 @@ pub fn oku_main(application: Box<dyn Application + Send>) {
 
     let event_loop = EventLoop::new().unwrap();
 
-    let (winit_to_app_tx, winit_to_app_rx) = mpsc::channel::<(u64, Message)>(100);
+    let (winit_to_app_tx, winit_to_app_rx) = mpsc::channel::<(u64, bool, Message)>(100);
     let (app_to_winit_tx, app_to_winit_rx) = mpsc::channel::<(u64, Message)>(100);
 
     rt.spawn(async move {
@@ -96,10 +93,7 @@ pub fn oku_main(application: Box<dyn Application + Send>) {
 
 impl ApplicationHandler for OkuState {
     fn new_events(&mut self, _event_loop: &ActiveEventLoop, cause: StartCause) {
-        self.wait_cancelled = match cause {
-            StartCause::WaitCancelled { .. } => true,
-            _ => false,
-        }
+        self.wait_cancelled = matches!(cause, StartCause::WaitCancelled { .. })
     }
 
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
@@ -107,12 +101,7 @@ impl ApplicationHandler for OkuState {
         let window = Arc::new(event_loop.create_window(window_attributes).unwrap());
         self.window = Some(window.clone());
 
-        let id = self.id;
-        self.rt.block_on(async {
-            self.winit_to_app_tx.send((id, Message::Resume(window.clone()))).await.expect("send failed");
-            if let Some((_id, Message::None)) = self.app_to_winit_rx.recv().await {}
-        });
-        self.id += 1;
+        self.send_message(Message::Resume(window), true);
     }
 
     fn window_event(&mut self, _event_loop: &ActiveEventLoop, _window_id: WindowId, event: WindowEvent) {
@@ -120,25 +109,11 @@ impl ApplicationHandler for OkuState {
 
         match event {
             WindowEvent::CloseRequested => {
-                let id = self.id;
-                self.rt.block_on(async {
-                    self.winit_to_app_tx.send((id, Message::Close)).await.expect("send failed");
-                    if let Some((id, Message::None)) = self.app_to_winit_rx.recv().await {
-                        //println!("Close Done: {}", id);
-                    }
-                });
-                self.id += 1;
+                self.send_message(Message::Close, true);
                 self.close_requested = true;
             }
             WindowEvent::Resized(new_size) => {
-                let id = self.id;
-                self.rt.block_on(async {
-                    self.winit_to_app_tx.send((id, Message::Resize(new_size))).await.expect("send failed");
-                    if let Some((id, Message::None)) = self.app_to_winit_rx.recv().await {
-                        //println!("Resize Done: {}", id);
-                    }
-                });
-                self.id += 1;
+                self.send_message(Message::Resize(new_size), true);
             }
             WindowEvent::KeyboardInput {
                 event: KeyEvent {
@@ -147,21 +122,14 @@ impl ApplicationHandler for OkuState {
                     ..
                 },
                 ..
-            } => match key.as_ref() {
-                Key::Named(NamedKey::Escape) => {
+            } => {
+                if let Key::Named(NamedKey::Escape) = key.as_ref() {
                     self.close_requested = true;
                 }
-                _ => (),
-            },
+            }
             WindowEvent::RedrawRequested => {
-                self.rt.block_on(async {
-                    let id = self.id;
-                    self.winit_to_app_tx.send((id, Message::RequestRedraw)).await.expect("send failed");
-                    if let Some((id, Message::None)) = self.app_to_winit_rx.recv().await {}
-                });
-
-                let window = self.window.as_ref().unwrap();
-                window.pre_present_notify();
+                self.send_message(Message::RequestRedraw, true);
+                self.window.clone().unwrap().pre_present_notify();
             }
             _ => (),
         }
@@ -187,7 +155,30 @@ unsafe impl Send for SoftwareRenderer {
     // Ensure that all fields are Send
 }
 
-async fn async_main(application: Box<dyn Application + Send>, mut rx: mpsc::Receiver<(u64, Message)>, mut tx: mpsc::Sender<(u64, Message)>) {
+impl OkuState {
+    fn send_message(&mut self, message: Message, wait_for_response: bool) {
+        let id = self.id;
+        self.rt.block_on(async {
+            self.winit_to_app_tx.send((id, wait_for_response, message)).await.expect("send failed");
+            if wait_for_response {
+                if let Some((id, Message::None)) = self.app_to_winit_rx.recv().await {
+                    assert_eq!(id, self.id, "Expected response message with id {}", self.id);
+                } else {
+                    panic!("Expected response message");
+                }
+            }
+        });
+        self.id += 1;
+    }
+}
+
+async fn send_response(id: u64, wait_for_response: bool, tx: &mpsc::Sender<(u64, Message)>) {
+    if wait_for_response {
+        tx.send((id, Message::None)).await.expect("send failed");
+    }
+}
+
+async fn async_main(application: Box<dyn Application + Send>, mut rx: mpsc::Receiver<(u64, bool, Message)>, tx: mpsc::Sender<(u64, Message)>) {
     let mut app = App {
         app: application,
         window: None,
@@ -197,7 +188,7 @@ async fn async_main(application: Box<dyn Application + Send>, mut rx: mpsc::Rece
     };
 
     loop {
-        if let Some((id, msg)) = rx.recv().await {
+        if let Some((id, wait_for_response, msg)) = rx.recv().await {
             match msg {
                 Message::RequestRedraw => {
                     let renderer = app.renderer.as_mut().unwrap();
@@ -226,10 +217,10 @@ async fn async_main(application: Box<dyn Application + Send>, mut rx: mpsc::Rece
 
                     renderer.submit();
 
-                    tx.send((id, Message::None)).await.expect("send failed");
+                    send_response(id, wait_for_response, &tx).await;
                 }
                 Message::Close => {
-                    tx.send((id, Message::None)).await.expect("send failed");
+                    send_response(id, wait_for_response, &tx).await;
                     break;
                 }
                 Message::None => {}
@@ -254,7 +245,7 @@ async fn async_main(application: Box<dyn Application + Send>, mut rx: mpsc::Rece
                     //let renderer = Box::new(SoftwareRenderer::new(window.clone()));
                     app.renderer = Some(renderer);
 
-                    tx.send((id, Message::None)).await.expect("send failed");
+                    send_response(id, wait_for_response, &tx).await;
                 }
                 Message::Resize(new_size) => {
                     let renderer = app.renderer.as_mut().unwrap();
@@ -263,7 +254,7 @@ async fn async_main(application: Box<dyn Application + Send>, mut rx: mpsc::Rece
                     // On macOS the window needs to be redrawn manually after resizing
                     app.window.as_ref().unwrap().request_redraw();
 
-                    tx.send((id, Message::None)).await.expect("send failed");
+                    send_response(id, wait_for_response, &tx).await;
                 }
             }
         }

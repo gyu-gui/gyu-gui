@@ -3,8 +3,6 @@ use oku::components::component::Component;
 use oku::elements::container::Container;
 use oku::elements::element::Element;
 use oku::elements::text::Text;
-use oku_core::elements::style::Unit;
-use oku_core::renderer::color::Color;
 use std::cell::RefCell;
 use std::rc::Rc;
 
@@ -49,7 +47,6 @@ impl Component for Hello {
         }
 
         Element::Container(container)
-        //Element::Container(Container::new().background(Color::new_from_rgba_u8(255, 0, 0, 255)).height(Unit::Px(800.0)))
     }
 }
 
