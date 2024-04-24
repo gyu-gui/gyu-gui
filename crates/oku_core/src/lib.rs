@@ -203,8 +203,8 @@ async fn async_main(application: Box<dyn Application + Send>, mut rx: mpsc::Rece
                     let renderer = app.renderer.as_mut().unwrap();
 
                     renderer.surface_set_clear_color(Color::new_from_rgba_u8(22, 0, 100, 255));
-                    //renderer.draw_rect(Rectangle::new(0.0, 0.0, 200.0, 200.0), Color::new_from_rgba_u8(0, 255, 0, 255));
-                    //renderer.draw_rect(Rectangle::new(300.0, 30.0, 200.0, 200.0), Color::new_from_rgba_u8(0, 0, 255, 255));
+                    renderer.draw_rect(Rectangle::new(0.0, 0.0, 200.0, 200.0), Color::new_from_rgba_u8(0, 20, 0, 255));
+                    renderer.draw_rect(Rectangle::new(300.0, 30.0, 200.0, 200.0), Color::new_from_rgba_u8(0, 0, 255, 255));
 
                     if let Some(mut root) = app.element_tree.clone() {
                         let mut window_element = Container::new();
@@ -250,8 +250,8 @@ async fn async_main(application: Box<dyn Application + Send>, mut rx: mpsc::Rece
                     }
 
                     app.window = Some(window.clone());
-                    //let renderer = Box::new(WgpuRenderer::new(window.clone()).await);
-                    let renderer = Box::new(SoftwareRenderer::new(window.clone()));
+                    let renderer = Box::new(WgpuRenderer::new(window.clone()).await);
+                    //let renderer = Box::new(SoftwareRenderer::new(window.clone()));
                     app.renderer = Some(renderer);
 
                     tx.send((id, Message::None)).await.expect("send failed");

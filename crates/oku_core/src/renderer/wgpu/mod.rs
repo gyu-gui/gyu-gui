@@ -4,7 +4,7 @@ use glam;
 use std::mem::size_of;
 use std::sync::Arc;
 use wgpu::util::DeviceExt;
-use wgpu::PresentMode;
+use wgpu::{BlendState, CompositeAlphaMode, PresentMode};
 use winit::window::Window;
 
 pub struct WgpuRenderer<'a> {
@@ -57,12 +57,12 @@ impl<'a> WgpuRenderer<'a> {
         let surface_format = surface_caps.formats.iter().copied().find(|f| f.is_srgb()).unwrap_or(surface_caps.formats[0]);
         let surface_config = wgpu::SurfaceConfiguration {
             usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
-            format: surface_format,
+            format: wgpu::TextureFormat::Rgba8UnormSrgb,
             width: window.inner_size().width,
             height: window.inner_size().height,
             present_mode: PresentMode::Fifo,
             desired_maximum_frame_latency: 0,
-            alpha_mode: surface_caps.alpha_modes[0],
+            alpha_mode: CompositeAlphaMode::Auto,
             view_formats: vec![],
         };
         surface.configure(&device, &surface_config);
@@ -213,7 +213,7 @@ impl<'a> WgpuRenderer<'a> {
                 compilation_options: Default::default(),
                 targets: &[Some(wgpu::ColorTargetState {
                     format: surface_config.format,
-                    blend: Some(wgpu::BlendState::REPLACE),
+                    blend: Some(wgpu::BlendState::ALPHA_BLENDING),
                     write_mask: wgpu::ColorWrites::ALL,
                 })],
             }),
@@ -292,7 +292,7 @@ impl Renderer for WgpuRenderer<'_> {
         let top_right = [x + width, y, 0.0];
         let bottom_right = [x + width, y + height, 0.0];
 
-        let color = [fill_color.r, fill_color.g, fill_color.b, fill_color.a];
+        let color = [fill_color.r / 255.0, fill_color.g / 255.0, fill_color.b / 255.0, fill_color.a / 255.0];
 
         self.rectangle_vertices.append(&mut vec![
             Vertex {
@@ -440,7 +440,7 @@ impl Vertex {
                 wgpu::VertexAttribute {
                     offset: mem::size_of::<[f32; 3]>() as wgpu::BufferAddress,
                     shader_location: 1,
-                    format: wgpu::VertexFormat::Float32x3,
+                    format: wgpu::VertexFormat::Float32x4,
                 },
                 wgpu::VertexAttribute {
                     offset: mem::size_of::<[f32; 7]>() as wgpu::BufferAddress,
