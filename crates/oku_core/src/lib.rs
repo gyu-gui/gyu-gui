@@ -241,8 +241,8 @@ async fn async_main(application: Box<dyn Application + Send>, mut rx: mpsc::Rece
                     }
 
                     app.window = Some(window.clone());
-                    let renderer = Box::new(WgpuRenderer::new(window.clone()).await);
-                    //let renderer = Box::new(SoftwareRenderer::new(window.clone()));
+                    //let renderer = Box::new(WgpuRenderer::new(window.clone()).await);
+                    let renderer = Box::new(SoftwareRenderer::new(window.clone()));
                     app.renderer = Some(renderer);
 
                     send_response(id, wait_for_response, &tx).await;

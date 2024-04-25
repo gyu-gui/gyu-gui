@@ -3,7 +3,7 @@ use crate::renderer::renderer::{Rectangle, RenderCommand, Renderer, Surface};
 use softbuffer::Buffer;
 use std::num::NonZeroU32;
 use std::sync::Arc;
-use tiny_skia::{Paint, Pixmap, Rect, Transform};
+use tiny_skia::{ColorSpace, Paint, Pixmap, Rect, Transform};
 use winit::window::Window;
 
 pub struct SoftwareRenderer {
@@ -40,6 +40,7 @@ impl SoftwareRenderer {
 
 fn draw_rect(canvas: &mut Pixmap, rectangle: Rectangle, fill_color: Color) {
     let mut paint = Paint::default();
+    paint.colorspace = ColorSpace::FullSRGBGamma;
     paint.set_color_rgba8(fill_color.r_u8(), fill_color.g_u8(), fill_color.b_u8(), fill_color.a_u8());
     paint.anti_alias = true;
 
@@ -47,8 +48,8 @@ fn draw_rect(canvas: &mut Pixmap, rectangle: Rectangle, fill_color: Color) {
     canvas.fill_rect(rect, &paint, Transform::identity(), None);
 }
 
-const fn rgb_to_encoded_u32(r: u32, g: u32, b: u32) -> u32 {
-    b | (g << 8) | (r << 16)
+const fn rgba_to_encoded_u32(r: u32, g: u32, b: u32, a: u32) -> u32 {
+    b | (g << 8) | (r << 16) | (a << 24)
 }
 
 impl Renderer for SoftwareRenderer {
@@ -81,7 +82,8 @@ impl Renderer for SoftwareRenderer {
     }
 
     fn submit(&mut self) {
-        self.framebuffer.fill(tiny_skia::Color::from_rgba8(self.surface_clear_color.r_u8(), self.surface_clear_color.g_u8(), self.surface_clear_color.b_u8(), self.surface_clear_color.a_u8()));
+       self.framebuffer.fill(tiny_skia::Color::from_rgba8(self.surface_clear_color.r_u8(), self.surface_clear_color.g_u8(), self.surface_clear_color.b_u8(), self.surface_clear_color.a_u8()));
+        
         for command in self.render_commands.drain(..) {
             match command {
                 RenderCommand::DrawRect(rectangle, fill_color) => {
@@ -105,8 +107,9 @@ impl SoftwareRenderer {
                 let red = current_pixel.red() as u32;
                 let green = current_pixel.green() as u32;
                 let blue = current_pixel.blue() as u32;
+                let alpha = current_pixel.alpha() as u32;
 
-                buffer[index] = rgb_to_encoded_u32(red, green, blue);
+                buffer[index] = rgba_to_encoded_u32(red, green, blue, alpha);
             }
         }
         buffer
