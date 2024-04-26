@@ -38,5 +38,8 @@ var texture_sampler: sampler;
 
 @fragment
 fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
-    return in.color;
+    //var color_s1 = (in.color.xyz / 255 + 0.055) / 1.055;
+    //var srgb_color = vec3(pow(color_s1.x, 2.4), pow(color_s1.y, 2.4), pow(color_s1.z, 2.4));
+    //return vec4(srgb_color.xyz, in.color.w / 255.0);
+    return in.color / 255.0;
 }

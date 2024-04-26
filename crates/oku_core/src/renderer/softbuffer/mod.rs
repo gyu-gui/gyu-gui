@@ -40,7 +40,7 @@ impl SoftwareRenderer {
 
 fn draw_rect(canvas: &mut Pixmap, rectangle: Rectangle, fill_color: Color) {
     let mut paint = Paint::default();
-    paint.colorspace = ColorSpace::FullSRGBGamma;
+    paint.colorspace = ColorSpace::SimpleSRGB;
     paint.set_color_rgba8(fill_color.r_u8(), fill_color.g_u8(), fill_color.b_u8(), fill_color.a_u8());
     paint.anti_alias = true;
 
@@ -83,7 +83,7 @@ impl Renderer for SoftwareRenderer {
 
     fn submit(&mut self) {
        self.framebuffer.fill(tiny_skia::Color::from_rgba8(self.surface_clear_color.r_u8(), self.surface_clear_color.g_u8(), self.surface_clear_color.b_u8(), self.surface_clear_color.a_u8()));
-        
+
         for command in self.render_commands.drain(..) {
             match command {
                 RenderCommand::DrawRect(rectangle, fill_color) => {

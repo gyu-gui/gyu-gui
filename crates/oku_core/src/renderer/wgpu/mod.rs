@@ -57,7 +57,7 @@ impl<'a> WgpuRenderer<'a> {
         let surface_format = surface_caps.formats.iter().copied().find(|f| f.is_srgb()).unwrap_or(surface_caps.formats[0]);
         let surface_config = wgpu::SurfaceConfiguration {
             usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
-            format: wgpu::TextureFormat::Rgba8UnormSrgb,
+            format: wgpu::TextureFormat::Rgba8Unorm,
             width: window.inner_size().width,
             height: window.inner_size().height,
             present_mode: PresentMode::Fifo,
@@ -213,7 +213,18 @@ impl<'a> WgpuRenderer<'a> {
                 compilation_options: Default::default(),
                 targets: &[Some(wgpu::ColorTargetState {
                     format: surface_config.format,
-                    blend: Some(wgpu::BlendState::ALPHA_BLENDING),
+                    blend: Some(wgpu::BlendState {
+                        color: wgpu::BlendComponent {
+                            src_factor: wgpu::BlendFactor::SrcAlpha,
+                            dst_factor: wgpu::BlendFactor::OneMinusSrcAlpha,
+                            operation: wgpu::BlendOperation::Add,
+                        },
+                        alpha: wgpu::BlendComponent {
+                            src_factor: wgpu::BlendFactor::One,
+                            dst_factor: wgpu::BlendFactor::OneMinusSrcAlpha,
+                            operation: wgpu::BlendOperation::Add,
+                        },
+                    }),
                     write_mask: wgpu::ColorWrites::ALL,
                 })],
             }),
@@ -292,7 +303,7 @@ impl Renderer for WgpuRenderer<'_> {
         let top_right = [x + width, y, 0.0];
         let bottom_right = [x + width, y + height, 0.0];
 
-        let color = [fill_color.r / 255.0, fill_color.g / 255.0, fill_color.b / 255.0, fill_color.a / 255.0];
+        let color = [fill_color.r, fill_color.g, fill_color.b, fill_color.a];
 
         self.rectangle_vertices.append(&mut vec![
             Vertex {
@@ -345,6 +356,14 @@ impl Renderer for WgpuRenderer<'_> {
         let height = output.texture.height() as f32;
 
         {
+            //let r = ((self.surface_clear_color.r / 255.0 + 0.055) / 1.055).powf(2.4);
+            //let g = ((self.surface_clear_color.g / 255.0 + 0.055) / 1.055).powf(2.4);
+            //let b = ((self.surface_clear_color.b / 255.0 + 0.055) / 1.055).powf(2.4);
+            let r = self.surface_clear_color.r / 255.0;
+            let g = self.surface_clear_color.g / 255.0;
+            let b = self.surface_clear_color.b / 255.0;
+
+
             let mut _render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("Render Pass"),
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {
@@ -352,9 +371,9 @@ impl Renderer for WgpuRenderer<'_> {
                     resolve_target: None,
                     ops: wgpu::Operations {
                         load: wgpu::LoadOp::Clear(wgpu::Color {
-                            r: self.surface_clear_color.r as f64 / 255.0,
-                            g: self.surface_clear_color.g as f64 / 255.0,
-                            b: self.surface_clear_color.b as f64 / 255.0,
+                            r: r as f64,
+                            g: g as f64,
+                            b: b as f64,
                             a: self.surface_clear_color.a as f64 / 255.0,
                         }),
                         store: wgpu::StoreOp::Store,
