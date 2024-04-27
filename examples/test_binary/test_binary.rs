@@ -3,6 +3,8 @@ use oku::components::component::Component;
 use oku::elements::container::Container;
 use oku::elements::element::Element;
 use oku::elements::text::Text;
+use oku_core::OkuOptions;
+use oku_core::RendererType::{Software, Wgpu};
 use std::cell::RefCell;
 use std::rc::Rc;
 
@@ -67,5 +69,5 @@ impl oku_core::application::Application for App {
 
 fn main() {
     let application = App {};
-    oku_core::oku_main(Box::new(application));
+    oku_core::oku_main_with_options(Box::new(application), Some(OkuOptions { renderer: Wgpu }));
 }

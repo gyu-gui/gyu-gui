@@ -54,21 +54,37 @@ struct OkuState {
     window: Option<Arc<Window>>,
     app_to_winit_rx: mpsc::Receiver<(u64, Message)>,
     winit_to_app_tx: mpsc::Sender<(u64, bool, Message)>,
+    oku_options: OkuOptions,
 }
 
-#[derive(Debug, Clone)]
 enum Message {
     RequestRedraw,
     Close,
     Confirmation,
-    Resume(Arc<Window>),
+    Resume(Arc<Window>, Option<Box<dyn Renderer + Send>>),
     Resize(PhysicalSize<u32>),
 }
 
+#[derive(Default)]
+pub struct OkuOptions {
+    pub renderer: RendererType,
+}
+
+#[derive(Default)]
+pub enum RendererType {
+    Software,
+    #[default]
+    Wgpu,
+}
+
 pub fn oku_main(application: Box<dyn Application + Send>) {
+    oku_main_with_options(application, None)
+}
+
+pub fn oku_main_with_options(application: Box<dyn Application + Send>, options: Option<OkuOptions>) {
     let rt = tokio::runtime::Builder::new_multi_thread().enable_all().build().expect("Failed to create runtime");
 
-    let event_loop = EventLoop::new().unwrap();
+    let event_loop = EventLoop::new().expect("Failed to create winit event loop");
 
     let (winit_to_app_tx, winit_to_app_rx) = mpsc::channel::<(u64, bool, Message)>(100);
     let (app_to_winit_tx, app_to_winit_rx) = mpsc::channel::<(u64, Message)>(100);
@@ -86,6 +102,7 @@ pub fn oku_main(application: Box<dyn Application + Send>) {
         window: None,
         app_to_winit_rx,
         winit_to_app_tx,
+        oku_options: options.unwrap_or_default(),
     };
 
     event_loop.run_app(&mut app).expect("run_app failed");
@@ -101,7 +118,12 @@ impl ApplicationHandler for OkuState {
         let window = Arc::new(event_loop.create_window(window_attributes).unwrap());
         self.window = Some(window.clone());
 
-        self.send_message(Message::Resume(window), true);
+        let renderer: Box<dyn Renderer + Send> = match self.oku_options.renderer {
+            RendererType::Software => Box::new(SoftwareRenderer::new(window.clone())) as Box<dyn Renderer + Send>,
+            RendererType::Wgpu => Box::new(self.rt.block_on(async { WgpuRenderer::new(window.clone()).await })),
+        };
+
+        self.send_message(Message::Resume(window, Some(renderer)), true);
     }
 
     fn window_event(&mut self, _event_loop: &ActiveEventLoop, _window_id: WindowId, event: WindowEvent) {
@@ -224,7 +246,7 @@ async fn async_main(application: Box<dyn Application + Send>, mut rx: mpsc::Rece
                     break;
                 }
                 Message::Confirmation => {}
-                Message::Resume(window) => {
+                Message::Resume(window, renderer) => {
                     if app.element_tree.is_none() {
                         let new_view = app.app.view();
                         app.element_tree = Some(new_view);
@@ -241,9 +263,7 @@ async fn async_main(application: Box<dyn Application + Send>, mut rx: mpsc::Rece
                     }
 
                     app.window = Some(window.clone());
-                    let renderer = Box::new(WgpuRenderer::new(window.clone()).await);
-                    //let renderer = Box::new(SoftwareRenderer::new(window.clone()));
-                    app.renderer = Some(renderer);
+                    app.renderer = renderer;
 
                     send_response(id, wait_for_response, &tx).await;
                 }

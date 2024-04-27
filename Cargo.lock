@@ -69,9 +69,9 @@ checksum = "5c6cb57a04249c6480766f7f7cef5467412af1490f8d1e243141daddada3264f"
 
 [[package]]
 name = "android-activity"
-version = "0.5.2"
+version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ee91c0c2905bae44f84bfa4e044536541df26b7703fd0888deeb9060fcc44289"
+checksum = "ef6978589202a00cd7e118380c448a08b6ed394c3a8df3a430d0898e3a42d046"
 dependencies = [
  "android-properties",
  "bitflags 2.5.0",
@@ -83,7 +83,7 @@ dependencies = [
  "log",
  "ndk",
  "ndk-context",
- "ndk-sys",
+ "ndk-sys 0.6.0+11769913",
  "num_enum",
  "thiserror",
 ]
@@ -598,7 +598,7 @@ checksum = "75b325c5dbd37f80359721ad39aca5a29fb04c89279657cffdda8736d0c0b9d2"
 [[package]]
 name = "dpi"
 version = "0.1.1"
-source = "git+https://github.com/rust-windowing/winit?rev=7006c7ceca948942914c42193fdd0b90e2dc50d5#7006c7ceca948942914c42193fdd0b90e2dc50d5"
+source = "git+https://github.com/rust-windowing/winit?rev=304a58549378c7a96c60437c04758b14095f7d09#304a58549378c7a96c60437c04758b14095f7d09"
 
 [[package]]
 name = "drm"
@@ -1167,14 +1167,14 @@ dependencies = [
 
 [[package]]
 name = "ndk"
-version = "0.8.0"
+version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2076a31b7010b17a38c01907c45b945e8f11495ee4dd588309718901b1f7a5b7"
+checksum = "c3f42e7bbe13d351b6bead8286a43aac9534b82bd3cc43e47037f012ebfd62d4"
 dependencies = [
  "bitflags 2.5.0",
  "jni-sys",
  "log",
- "ndk-sys",
+ "ndk-sys 0.6.0+11769913",
  "num_enum",
  "raw-window-handle",
  "thiserror",
@@ -1191,6 +1191,15 @@ name = "ndk-sys"
 version = "0.5.0+25.2.9519653"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8c196769dd60fd4f363e11d948139556a344e79d451aeb2fa2fd040738ef7691"
+dependencies = [
+ "jni-sys",
+]
+
+[[package]]
+name = "ndk-sys"
+version = "0.6.0+11769913"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ee6cda3051665f1fb8d9e08fc35c96d5a244fb1be711a03b71118828afc9a873"
 dependencies = [
  "jni-sys",
 ]
@@ -2429,7 +2438,7 @@ dependencies = [
  "log",
  "metal",
  "naga",
- "ndk-sys",
+ "ndk-sys 0.5.0+25.2.9519653",
  "objc",
  "once_cell",
  "parking_lot",
@@ -2720,7 +2729,7 @@ checksum = "bec47e5bfd1bff0eeaf6d8b485cc1074891a197ab4225d504cb7a1ab88b02bf0"
 [[package]]
 name = "winit"
 version = "0.29.15"
-source = "git+https://github.com/rust-windowing/winit?rev=7006c7ceca948942914c42193fdd0b90e2dc50d5#7006c7ceca948942914c42193fdd0b90e2dc50d5"
+source = "git+https://github.com/rust-windowing/winit?rev=304a58549378c7a96c60437c04758b14095f7d09#304a58549378c7a96c60437c04758b14095f7d09"
 dependencies = [
  "ahash",
  "android-activity",
@@ -2738,7 +2747,6 @@ dependencies = [
  "libc",
  "memmap2",
  "ndk",
- "ndk-sys",
  "objc2",
  "objc2-app-kit",
  "objc2-foundation",

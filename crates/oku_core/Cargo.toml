@@ -7,7 +7,7 @@ resolver = "2"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [dependencies]
 
-winit = { git = "https://github.com/rust-windowing/winit", rev = "7006c7ceca948942914c42193fdd0b90e2dc50d5" }
+winit = { git = "https://github.com/rust-windowing/winit", rev = "304a58549378c7a96c60437c04758b14095f7d09" }
 tiny-skia = { git = "https://github.com/RazrFalcon/tiny-skia", rev = "9b673e6c14e5e0c3f98413f8fa7e3a6cb315183b" }
 softbuffer = "0.4.2"
 cosmic-text = { git = "https://github.com/pop-os/cosmic-text", rev = "ff5501d9a36e51c50d908413caf7632d8f7533b7" }
