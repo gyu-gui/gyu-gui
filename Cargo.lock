@@ -347,36 +347,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "77e53693616d3075149f4ead59bdeecd204ac6b8192d8969757601b74bddf00f"
 
 [[package]]
-name = "cocoa"
-version = "0.25.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f6140449f97a6e97f9511815c5632d84c8aacf8ac271ad77c559218161a1373c"
-dependencies = [
- "bitflags 1.3.2",
- "block",
- "cocoa-foundation",
- "core-foundation",
- "core-graphics",
- "foreign-types",
- "libc",
- "objc",
-]
-
-[[package]]
-name = "cocoa-foundation"
-version = "0.1.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8c6234cbb2e4c785b456c0644748b1ac416dd045799740356f8363dfe00c93f7"
-dependencies = [
- "bitflags 1.3.2",
- "block",
- "core-foundation",
- "core-graphics-types",
- "libc",
- "objc",
-]
-
-[[package]]
 name = "codespan-reporting"
 version = "0.11.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -505,7 +475,7 @@ dependencies = [
 [[package]]
 name = "cosmic-text"
 version = "0.11.2"
-source = "git+https://github.com/pop-os/cosmic-text?rev=ff5501d9a36e51c50d908413caf7632d8f7533b7#ff5501d9a36e51c50d908413caf7632d8f7533b7"
+source = "git+https://github.com/pop-os/cosmic-text?rev=2f5f2c63dabc0173adaa95d619a777454a3c39af#2f5f2c63dabc0173adaa95d619a777454a3c39af"
 dependencies = [
  "bitflags 2.5.0",
  "fontdb",
@@ -558,7 +528,7 @@ checksum = "96a6ac251f4a2aca6b3f91340350eab87ae57c3f127ffeb585e92bd336717991"
 [[package]]
 name = "d3d12"
 version = "0.20.0"
-source = "git+https://github.com/gfx-rs/wgpu?rev=90e7060d0d5e0616209ae4168c79c984925abde0#90e7060d0d5e0616209ae4168c79c984925abde0"
+source = "git+https://github.com/gfx-rs/wgpu?rev=5fa537bfd97683683cdad793bb0fe34a63a75c40#5fa537bfd97683683cdad793bb0fe34a63a75c40"
 dependencies = [
  "bitflags 2.5.0",
  "libloading 0.7.4",
@@ -602,9 +572,9 @@ source = "git+https://github.com/rust-windowing/winit?rev=337d50779c299240f6e0a6
 
 [[package]]
 name = "drm"
-version = "0.11.1"
+version = "0.12.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a0f8a69e60d75ae7dab4ef26a59ca99f2a89d4c142089b537775ae0c198bdcde"
+checksum = "98888c4bbd601524c11a7ed63f814b8825f420514f78e96f752c437ae9cbb5d1"
 dependencies = [
  "bitflags 2.5.0",
  "bytemuck",
@@ -615,9 +585,9 @@ dependencies = [
 
 [[package]]
 name = "drm-ffi"
-version = "0.7.1"
+version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "41334f8405792483e32ad05fbb9c5680ff4e84491883d2947a4757dc54cb2ac6"
+checksum = "97c98727e48b7ccb4f4aea8cfe881e5b07f702d17b7875991881b41af7278d53"
 dependencies = [
  "drm-sys",
  "rustix",
@@ -631,9 +601,9 @@ checksum = "0aafbcdb8afc29c1a7ee5fbe53b5d62f4565b35a042a662ca9fecd0b54dae6f4"
 
 [[package]]
 name = "drm-sys"
-version = "0.6.1"
+version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2d09ff881f92f118b11105ba5e34ff8f4adf27b30dae8f12e28c193af1c83176"
+checksum = "fd39dde40b6e196c2e8763f23d119ddb1a8714534bf7d77fa97a65b0feda3986"
 dependencies = [
  "libc",
  "linux-raw-sys 0.6.4",
@@ -1149,7 +1119,7 @@ dependencies = [
 [[package]]
 name = "naga"
 version = "0.20.0"
-source = "git+https://github.com/gfx-rs/wgpu?rev=90e7060d0d5e0616209ae4168c79c984925abde0#90e7060d0d5e0616209ae4168c79c984925abde0"
+source = "git+https://github.com/gfx-rs/wgpu?rev=5fa537bfd97683683cdad793bb0fe34a63a75c40#5fa537bfd97683683cdad793bb0fe34a63a75c40"
 dependencies = [
  "arrayvec",
  "bit-set",
@@ -1308,6 +1278,16 @@ dependencies = [
  "block2",
  "dispatch",
  "objc2",
+]
+
+[[package]]
+name = "objc2-quartz-core"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "153140331e87b21327f0be072ac7108e67b43986f64098e937077b1eed6e3191"
+dependencies = [
+ "objc2",
+ "objc2-foundation",
 ]
 
 [[package]]
@@ -1801,13 +1781,11 @@ dependencies = [
 [[package]]
 name = "softbuffer"
 version = "0.4.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "61d5d17f23326fe0d9b0af282f73f3af666699420fd5f42629efd9c6e7dc166f"
+source = "git+https://github.com/rust-windowing/softbuffer?rev=28ebe6e7373bae59196bff5b39d047bcc0a41137#28ebe6e7373bae59196bff5b39d047bcc0a41137"
 dependencies = [
  "as-raw-xcb-connection",
  "bytemuck",
  "cfg_aliases 0.2.0",
- "cocoa",
  "core-graphics",
  "drm",
  "fastrand",
@@ -1815,7 +1793,10 @@ dependencies = [
  "js-sys",
  "log",
  "memmap2",
- "objc",
+ "objc2",
+ "objc2-app-kit",
+ "objc2-foundation",
+ "objc2-quartz-core",
  "raw-window-handle",
  "redox_syscall 0.5.1",
  "rustix",
@@ -2364,7 +2345,7 @@ dependencies = [
 [[package]]
 name = "wgpu"
 version = "0.20.0"
-source = "git+https://github.com/gfx-rs/wgpu?rev=90e7060d0d5e0616209ae4168c79c984925abde0#90e7060d0d5e0616209ae4168c79c984925abde0"
+source = "git+https://github.com/gfx-rs/wgpu?rev=5fa537bfd97683683cdad793bb0fe34a63a75c40#5fa537bfd97683683cdad793bb0fe34a63a75c40"
 dependencies = [
  "arrayvec",
  "cfg-if",
@@ -2389,7 +2370,7 @@ dependencies = [
 [[package]]
 name = "wgpu-core"
 version = "0.20.0"
-source = "git+https://github.com/gfx-rs/wgpu?rev=90e7060d0d5e0616209ae4168c79c984925abde0#90e7060d0d5e0616209ae4168c79c984925abde0"
+source = "git+https://github.com/gfx-rs/wgpu?rev=5fa537bfd97683683cdad793bb0fe34a63a75c40#5fa537bfd97683683cdad793bb0fe34a63a75c40"
 dependencies = [
  "arrayvec",
  "bit-vec",
@@ -2414,7 +2395,7 @@ dependencies = [
 [[package]]
 name = "wgpu-hal"
 version = "0.20.0"
-source = "git+https://github.com/gfx-rs/wgpu?rev=90e7060d0d5e0616209ae4168c79c984925abde0#90e7060d0d5e0616209ae4168c79c984925abde0"
+source = "git+https://github.com/gfx-rs/wgpu?rev=5fa537bfd97683683cdad793bb0fe34a63a75c40#5fa537bfd97683683cdad793bb0fe34a63a75c40"
 dependencies = [
  "android_system_properties",
  "arrayvec",
@@ -2458,7 +2439,7 @@ dependencies = [
 [[package]]
 name = "wgpu-types"
 version = "0.20.0"
-source = "git+https://github.com/gfx-rs/wgpu?rev=90e7060d0d5e0616209ae4168c79c984925abde0#90e7060d0d5e0616209ae4168c79c984925abde0"
+source = "git+https://github.com/gfx-rs/wgpu?rev=5fa537bfd97683683cdad793bb0fe34a63a75c40#5fa537bfd97683683cdad793bb0fe34a63a75c40"
 dependencies = [
  "bitflags 2.5.0",
  "js-sys",

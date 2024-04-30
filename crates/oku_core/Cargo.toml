@@ -9,8 +9,8 @@ resolver = "2"
 
 winit = { git = "https://github.com/rust-windowing/winit", rev = "337d50779c299240f6e0a67ef3e852f1c971cf16" }
 tiny-skia = { git = "https://github.com/RazrFalcon/tiny-skia", rev = "9b673e6c14e5e0c3f98413f8fa7e3a6cb315183b" }
-softbuffer = "0.4.2"
-cosmic-text = { git = "https://github.com/pop-os/cosmic-text", rev = "ff5501d9a36e51c50d908413caf7632d8f7533b7" }
+softbuffer = { git = "https://github.com/rust-windowing/softbuffer", rev = "28ebe6e7373bae59196bff5b39d047bcc0a41137" }
+cosmic-text = { git = "https://github.com/pop-os/cosmic-text", rev = "2f5f2c63dabc0173adaa95d619a777454a3c39af" }
 taffy = { git = "https://github.com/DioxusLabs/taffy", rev = "066949d8b445eb19dbe76a4c5733038be4c30579" }
 accesskit = "0.13.0"
 #accesskit_winit = { version = "0.18.0" }
@@ -21,7 +21,7 @@ log = "0.4.21"
 # SSE2 is enabled by default on x86_64 targets.
 glam = { version = "0.27.0" }
 env_logger = { version = "0.11.3" }
-wgpu = { git = "https://github.com/gfx-rs/wgpu", rev = "90e7060d0d5e0616209ae4168c79c984925abde0" }
+wgpu = { git = "https://github.com/gfx-rs/wgpu", rev = "5fa537bfd97683683cdad793bb0fe34a63a75c40" }
 bytemuck = { version = "1.15.0", features = ["derive"] }
 image = { version = "0.25.1", default-features = false, features = ["png", "jpeg"] }
 
