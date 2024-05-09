@@ -7,6 +7,7 @@ mod widget_id;
 
 #[cfg(test)]
 mod tests;
+pub mod reactive;
 
 use crate::application::Application;
 use crate::elements::element::Element;

@@ -7,8 +7,10 @@ use oku_core::OkuOptions;
 use oku_core::RendererType::{Software, Wgpu};
 use std::cell::RefCell;
 use std::rc::Rc;
+use oku_core::reactive::reactive::Runtime;
+use oku_core::reactive::use_state::{use_state};
 
-fn use_state<T: Clone>(value: T) -> (impl Fn() -> T, impl FnMut(T)) {
+/*fn use_state<T: Clone>(value: T) -> (impl Fn() -> T, impl FnMut(T)) {
     let val = Rc::new(RefCell::new(value));
 
     let state = {
@@ -21,7 +23,7 @@ fn use_state<T: Clone>(value: T) -> (impl Fn() -> T, impl FnMut(T)) {
     };
 
     (state, set_state)
-}
+}*/
 
 struct Test1 {}
 
@@ -35,14 +37,15 @@ struct Hello {}
 
 impl Component for Hello {
     fn view(&self, props: Option<&Props>, children: Vec<Element>) -> Element {
-        let (data, mut set_data) = use_state(String::from("foo"));
 
-        //println!("data: {}", data());
-        set_data(String::from("bar"));
-        //println!("data: {}", data());
+        let (number, mut set_number) = use_state(123);
 
-        let my_data = props.unwrap().get_data::<u32>().unwrap();
-        let mut container = Container::new().add_child(Element::Text(Text::new(format!("Hello, world! {}", my_data))));
+        println!("{:?}", number());
+        set_number(45);
+        println!("{:?}", number());
+
+        // let my_data = props.unwrap().get_data::<u32>().unwrap();
+        let mut container = Container::new().add_child(Element::Text(Text::new(format!("Hello, world! {}", number()))));
 
         for child in children {
             container = container.add_child(child);
