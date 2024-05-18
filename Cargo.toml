@@ -9,6 +9,7 @@ dynamic_linking = ["dep:oku_dylib", "oku_core/dynamic_linking"]
 [dependencies]
 oku_dylib = { path = "crates/oku_dylib", default-features = false, optional = true  }
 oku_core = { path = "crates/oku_core", default-features = false }
+rand = "0.9.0-alpha.1"
 
 [workspace]
 resolver = "2"

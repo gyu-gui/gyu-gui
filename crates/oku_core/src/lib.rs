@@ -5,6 +5,7 @@ pub mod elements;
 pub mod renderer;
 mod widget_id;
 
+pub mod events;
 pub mod reactive;
 #[cfg(test)]
 mod tests;
@@ -26,6 +27,7 @@ use crate::elements::container::Container;
 use crate::elements::layout_context::{measure_content, LayoutContext};
 use crate::elements::standard_element::StandardElement;
 use crate::elements::style::Unit;
+use crate::reactive::reactive::Runtime;
 use crate::renderer::color::Color;
 use crate::renderer::renderer::{Rectangle, Renderer};
 use crate::renderer::softbuffer::SoftwareRenderer;
@@ -136,8 +138,6 @@ impl ApplicationHandler for OkuState {
     }
 
     fn window_event(&mut self, _event_loop: &ActiveEventLoop, _window_id: WindowId, event: WindowEvent) {
-        //println!("{event:?}");
-
         match event {
             WindowEvent::CloseRequested => {
                 self.send_message(Message::Close, true);
@@ -153,7 +153,13 @@ impl ApplicationHandler for OkuState {
                     state,
                     button,
                 };
-                self.send_message(Message::MouseInput(mouse_event), true);
+                if let MouseButton::Left = button {
+                    self.request_redraw = true;
+
+                    if state == ElementState::Pressed {
+                        self.send_message(Message::MouseInput(mouse_event), true);
+                    }
+                }
             }
             WindowEvent::Resized(new_size) => {
                 self.send_message(Message::Resize(new_size), true);
@@ -220,6 +226,9 @@ async fn send_response(id: u64, wait_for_response: bool, tx: &mpsc::Sender<(u64,
         tx.send((id, Message::Confirmation)).await.expect("send failed");
     }
 }
+use crate::events::EventResult;
+use std::borrow::BorrowMut;
+use std::ops::{Deref, DerefMut};
 
 async fn async_main(application: Box<dyn Application + Send>, mut rx: mpsc::Receiver<(u64, bool, Message)>, tx: mpsc::Sender<(u64, Message)>) {
     let mut app = App {
@@ -298,7 +307,6 @@ async fn async_main(application: Box<dyn Application + Send>, mut rx: mpsc::Rece
                     send_response(id, wait_for_response, &tx).await;
                 }
                 Message::MouseInput(mouse_input) => {
-                    println!("{:?}", mouse_input);
                     send_response(id, wait_for_response, &tx).await;
 
                     let root = app.element_tree.clone();
@@ -316,8 +324,18 @@ async fn async_main(application: Box<dyn Application + Send>, mut rx: mpsc::Rece
 
                     for element in traversal_history.iter().rev() {
                         let mut element = element.clone();
+                        let mut ch = Runtime::get_click_handler(0).unwrap();
+                        let res = ch((2, 2));
+                        Runtime::set_click_handler(0, ch);
 
+                        let new_view = app.app.view();
+                        app.element_tree = Some(new_view);
+                        app.window.as_ref().unwrap().request_redraw();
                         //element.handle_mouse_input(mouse_input);
+
+                        if let EventResult::Stop = res {
+                            break;
+                        }
                     }
                 }
             }
