@@ -1,6 +1,7 @@
 use crate::application::Props;
 use crate::elements::element::Element;
 use crate::reactive::reactive;
+use crate::reactive::reactive::RUNTIME;
 
 pub trait Component<State = (), Message = ()>
 where
@@ -9,11 +10,11 @@ where
     fn view(&self, props: Option<&Props>, children: Vec<Element>, key: Option<String>) -> Element;
 
     fn get_state(&self) -> Option<State> {
-        reactive::Runtime::get_state(0)
+        RUNTIME.get_state(0)
     }
 
     fn set_state(&self, value: State) {
-        reactive::Runtime::set_state(0, value);
+        RUNTIME.set_state(0, value);
     }
 
     #[allow(unused_variables)]
