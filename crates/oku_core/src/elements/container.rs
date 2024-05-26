@@ -10,6 +10,7 @@ use std::any::Any;
 use std::sync::Arc;
 use taffy::{NodeId, TaffyTree};
 use tiny_skia::{LineCap, LineJoin, Paint, PathBuilder, Rect};
+use crate::events::Message;
 
 #[derive(Clone, Default, Debug)]
 pub struct Container {
@@ -150,7 +151,7 @@ impl StandardElement for Container {
         x >= self.computed_x && x <= self.computed_x + self.computed_width && y >= self.computed_y && y <= self.computed_y + self.computed_height
     }
 
-    fn add_update_handler(&mut self, update: Arc<fn(Box<dyn Any>, Box<dyn Any>)>) {
+    fn add_update_handler(&mut self, update: Arc<fn(Message, Box<dyn Any>)>) {
         todo!()
     }
 }

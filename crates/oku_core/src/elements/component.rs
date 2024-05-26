@@ -10,15 +10,16 @@ use cosmic_text::FontSystem;
 use std::any::Any;
 use std::sync::Arc;
 use taffy::{NodeId, TaffyTree};
+use crate::events::Message;
 
-fn default_update(msg: Box<dyn Any>, state: Box<dyn Any>) {}
+fn default_update(msg: Message, state: Box<dyn Any>) {}
 
 #[derive(Clone, Debug)]
 pub struct Component {
     id: u64,
     key: Option<String>,
     children: Vec<Element>,
-    pub update: Arc<fn(msg: Box<dyn Any>, state: Box<dyn Any>)>,
+    pub update: Arc<fn(msg: Message, state: Box<dyn Any>)>,
 }
 impl Component {
     pub fn new() -> Component {
@@ -91,7 +92,7 @@ impl Component {
         self.children[0].in_bounds(x, y)
     }
 
-    pub fn add_update_handler(&mut self, update: Arc<fn(msg: Box<dyn Any>, state: Box<dyn Any>)>) {
+    pub fn add_update_handler(&mut self, update: Arc<fn(msg: Message, state: Box<dyn Any>)>) {
         self.update = update;
     }
 }

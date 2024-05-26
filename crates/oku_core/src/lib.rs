@@ -10,6 +10,7 @@ pub mod reactive;
 #[cfg(test)]
 mod tests;
 
+use std::any::Any;
 use crate::application::Application;
 use crate::elements::element::Element;
 use cosmic_text::{FontSystem, SwashCache};
@@ -32,7 +33,6 @@ use crate::renderer::color::Color;
 use crate::renderer::renderer::{Rectangle, Renderer};
 use crate::renderer::softbuffer::SoftwareRenderer;
 use crate::renderer::wgpu::WgpuRenderer;
-
 const WAIT_TIME: time::Duration = time::Duration::from_millis(100);
 
 struct App {
@@ -43,6 +43,8 @@ struct App {
     element_tree: Option<Element>,
     mouse_position: (f32, f32),
 }
+
+
 
 pub struct RenderContext {
     font_system: FontSystem,
@@ -56,8 +58,8 @@ struct OkuState {
     wait_cancelled: bool,
     close_requested: bool,
     window: Option<Arc<Window>>,
-    app_to_winit_rx: mpsc::Receiver<(u64, Message)>,
-    winit_to_app_tx: mpsc::Sender<(u64, bool, Message)>,
+    app_to_winit_rx: mpsc::Receiver<(u64, InternalMessage)>,
+    winit_to_app_tx: mpsc::Sender<(u64, bool, InternalMessage)>,
     oku_options: OkuOptions,
 }
 
@@ -74,7 +76,7 @@ struct MouseMoved {
     position: (f64, f64),
 }
 
-enum Message {
+enum InternalMessage {
     RequestRedraw,
     Close,
     Confirmation,
@@ -105,8 +107,8 @@ pub fn oku_main_with_options(application: Box<dyn Application + Send>, options: 
 
     let event_loop = EventLoop::new().expect("Failed to create winit event loop");
 
-    let (winit_to_app_tx, winit_to_app_rx) = mpsc::channel::<(u64, bool, Message)>(100);
-    let (app_to_winit_tx, app_to_winit_rx) = mpsc::channel::<(u64, Message)>(100);
+    let (winit_to_app_tx, winit_to_app_rx) = mpsc::channel::<(u64, bool, InternalMessage)>(100);
+    let (app_to_winit_tx, app_to_winit_rx) = mpsc::channel::<(u64, InternalMessage)>(100);
 
     rt.spawn(async move {
         async_main(application, winit_to_app_rx, app_to_winit_tx).await;
@@ -142,13 +144,13 @@ impl ApplicationHandler for OkuState {
             RendererType::Wgpu => Box::new(self.rt.block_on(async { WgpuRenderer::new(window.clone()).await })),
         };
 
-        self.send_message(Message::Resume(window, Some(renderer)), true);
+        self.send_message(InternalMessage::Resume(window, Some(renderer)), true);
     }
 
     fn window_event(&mut self, _event_loop: &ActiveEventLoop, _window_id: WindowId, event: WindowEvent) {
         match event {
             WindowEvent::CloseRequested => {
-                self.send_message(Message::Close, true);
+                self.send_message(InternalMessage::Close, true);
                 self.close_requested = true;
             }
             WindowEvent::MouseInput {
@@ -165,7 +167,7 @@ impl ApplicationHandler for OkuState {
                     self.request_redraw = true;
 
                     if state == ElementState::Pressed {
-                        self.send_message(Message::MouseInput(mouse_event), true);
+                        self.send_message(InternalMessage::MouseInput(mouse_event), true);
                     }
                 }
             }
@@ -174,7 +176,7 @@ impl ApplicationHandler for OkuState {
                 position,
             } => {
                 self.send_message(
-                    Message::MouseMoved(MouseMoved {
+                    InternalMessage::MouseMoved(MouseMoved {
                         device_id,
                         position: (position.x, position.y),
                     }),
@@ -182,7 +184,7 @@ impl ApplicationHandler for OkuState {
                 );
             }
             WindowEvent::Resized(new_size) => {
-                self.send_message(Message::Resize(new_size), true);
+                self.send_message(InternalMessage::Resize(new_size), true);
             }
             WindowEvent::KeyboardInput {
                 event: KeyEvent {
@@ -197,7 +199,7 @@ impl ApplicationHandler for OkuState {
                 }
             }
             WindowEvent::RedrawRequested => {
-                self.send_message(Message::RequestRedraw, true);
+                self.send_message(InternalMessage::RequestRedraw, true);
                 self.window.clone().unwrap().pre_present_notify();
             }
             _ => (),
@@ -206,7 +208,7 @@ impl ApplicationHandler for OkuState {
 
     fn about_to_wait(&mut self, event_loop: &ActiveEventLoop) {
         if self.request_redraw && !self.wait_cancelled && !self.close_requested {
-            self.window.as_ref().unwrap().request_redraw();
+            //self.window.as_ref().unwrap().request_redraw();
         }
 
         if !self.wait_cancelled {
@@ -225,12 +227,12 @@ unsafe impl Send for SoftwareRenderer {
 }
 
 impl OkuState {
-    fn send_message(&mut self, message: Message, wait_for_response: bool) {
+    fn send_message(&mut self, message: InternalMessage, wait_for_response: bool) {
         let id = self.id;
         self.rt.block_on(async {
             self.winit_to_app_tx.send((id, wait_for_response, message)).await.expect("send failed");
             if wait_for_response {
-                if let Some((id, Message::Confirmation)) = self.app_to_winit_rx.recv().await {
+                if let Some((id, InternalMessage::Confirmation)) = self.app_to_winit_rx.recv().await {
                     assert_eq!(id, self.id, "Expected response message with id {}", self.id);
                 } else {
                     panic!("Expected response message");
@@ -241,17 +243,16 @@ impl OkuState {
     }
 }
 
-async fn send_response(id: u64, wait_for_response: bool, tx: &mpsc::Sender<(u64, Message)>) {
+async fn send_response(id: u64, wait_for_response: bool, tx: &mpsc::Sender<(u64, InternalMessage)>) {
     if wait_for_response {
-        tx.send((id, Message::Confirmation)).await.expect("send failed");
+        tx.send((id, InternalMessage::Confirmation)).await.expect("send failed");
     }
 }
-use crate::events::EventResult;
+use crate::events::{ClickMessage, EventResult, Message};
 use std::borrow::BorrowMut;
 use std::ops::{Deref, DerefMut};
-use taffy::Position;
 
-async fn async_main(application: Box<dyn Application + Send>, mut rx: mpsc::Receiver<(u64, bool, Message)>, tx: mpsc::Sender<(u64, Message)>) {
+async fn async_main(application: Box<dyn Application + Send>, mut rx: mpsc::Receiver<(u64, bool, InternalMessage)>, tx: mpsc::Sender<(u64, InternalMessage)>) {
     let mut app = Box::new(App {
         app: application,
         window: None,
@@ -264,7 +265,7 @@ async fn async_main(application: Box<dyn Application + Send>, mut rx: mpsc::Rece
     loop {
         if let Some((id, wait_for_response, msg)) = rx.recv().await {
             match msg {
-                Message::RequestRedraw => {
+                InternalMessage::RequestRedraw => {
                     let renderer = app.renderer.as_mut().unwrap();
 
                     renderer.surface_set_clear_color(Color::new_from_rgba_u8(255, 255, 255, 255));
@@ -296,12 +297,12 @@ async fn async_main(application: Box<dyn Application + Send>, mut rx: mpsc::Rece
                     app.element_tree.clone().unwrap().print_tree();
                     send_response(id, wait_for_response, &tx).await;
                 }
-                Message::Close => {
+                InternalMessage::Close => {
                     send_response(id, wait_for_response, &tx).await;
                     break;
                 }
-                Message::Confirmation => {}
-                Message::Resume(window, renderer) => {
+                InternalMessage::Confirmation => {}
+                InternalMessage::Resume(window, renderer) => {
                     if app.element_tree.is_none() {
                         let new_view = app.app.view();
                         app.element_tree = Some(new_view);
@@ -322,7 +323,7 @@ async fn async_main(application: Box<dyn Application + Send>, mut rx: mpsc::Rece
 
                     send_response(id, wait_for_response, &tx).await;
                 }
-                Message::Resize(new_size) => {
+                InternalMessage::Resize(new_size) => {
                     let renderer = app.renderer.as_mut().unwrap();
                     renderer.resize_surface(new_size.width.max(1) as f32, new_size.height.max(1) as f32);
 
@@ -331,7 +332,7 @@ async fn async_main(application: Box<dyn Application + Send>, mut rx: mpsc::Rece
 
                     send_response(id, wait_for_response, &tx).await;
                 }
-                Message::MouseInput(mouse_input) => {
+                InternalMessage::MouseInput(mouse_input) => {
                     let root = app.element_tree.clone();
                     let mut to_visit = Vec::<Element>::new();
                     let mut traversal_history = Vec::<Element>::new();
@@ -359,14 +360,24 @@ async fn async_main(application: Box<dyn Application + Send>, mut rx: mpsc::Rece
                             Element::Component(component) => {
                                 println!("Calling component click");
                                 let update = component.update.clone();
-                                update(Box::new(()), Box::new(()));
+
+                                let oku_message = events::Message::OkuMessage(
+                                  events::OkuEvent::Click(ClickMessage {
+                                      mouse_input,
+                                      x: app.mouse_position.0 as f64,
+                                      y: app.mouse_position.1 as f64,
+                                  })
+                                );
+
+                                update(oku_message, Box::new(4));
+
                             }
                             _ => {}
                         }
 
-                        let new_view = app.app.view();
-                        app.element_tree = Some(new_view);
-                        app.window.as_ref().unwrap().request_redraw();
+                       let new_view = app.app.view();
+                       app.element_tree = Some(new_view);
+                       app.window.as_ref().unwrap().request_redraw();
 
                         /*if let EventResult::Stop = res {
                             break;
@@ -375,7 +386,7 @@ async fn async_main(application: Box<dyn Application + Send>, mut rx: mpsc::Rece
 
                     send_response(id, wait_for_response, &tx).await;
                 }
-                Message::MouseMoved(mouse_moved) => {
+                InternalMessage::MouseMoved(mouse_moved) => {
                     app.mouse_position = (mouse_moved.position.0 as f32, mouse_moved.position.1 as f32);
                     send_response(id, wait_for_response, &tx).await;
                 }

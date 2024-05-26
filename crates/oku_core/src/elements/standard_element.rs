@@ -7,6 +7,7 @@ use cosmic_text::FontSystem;
 use std::any::Any;
 use std::sync::Arc;
 use taffy::{NodeId, TaffyTree};
+use crate::events::Message;
 
 pub trait StandardElement {
     fn children(&self) -> Vec<Element>;
@@ -33,5 +34,5 @@ pub trait StandardElement {
     fn computed_style_mut(&mut self) -> &mut Style;
 
     fn in_bounds(&self, x: f32, y: f32) -> bool;
-    fn add_update_handler(&mut self, update: Arc<fn(msg: Box<dyn Any>, state: Box<dyn Any>)>);
+    fn add_update_handler(&mut self, update: Arc<fn(msg: Message, state: Box<dyn Any>)>);
 }

@@ -11,6 +11,7 @@ use cosmic_text::FontSystem;
 use std::any::Any;
 use std::sync::Arc;
 use taffy::{NodeId, TaffyTree};
+use crate::events::Message;
 
 #[derive(Clone, Debug)]
 pub enum Element {
@@ -146,7 +147,7 @@ impl StandardElement for Element {
             Element::Component(component) => component.in_bounds(x, y),
         }
     }
-    fn add_update_handler(&mut self, update: Arc<fn(msg: Box<dyn Any>, state: Box<dyn Any>)>) {
+    fn add_update_handler(&mut self, update: Arc<fn(msg: Message, state: Box<dyn Any>)>) {
         if let Element::Component(component) = self {
             component.add_update_handler(update);
         };
@@ -155,16 +156,54 @@ impl StandardElement for Element {
 
 impl Element {
     pub fn print_tree(&self) {
+        let mut elements: Vec<(Self, usize, bool)> = vec![(self.clone(), 0, true)];
+        let mut last_indent = 0;
+        let mut last_was_last = true;
 
-        let indent = 0;
-        let mut elements: Vec<(Self, usize)> = vec![(self.clone(), indent)];
-        while elements.len() > 0 {
-            let (element, indent) = elements.pop().unwrap();
+        while let Some((element, indent, is_last)) = elements.pop() {
+            if indent > last_indent {
+                print!("{: <1$}", "", (indent - last_indent) * 4);
+            } else if indent < last_indent {
+                print!("{: <1$}", "", (last_indent - indent) * 4);
+            }
 
-            println!("{}{} - ID: {}, Key: {}", "-".repeat(indent), element.name(), element.id(), element.key().unwrap_or("".to_string()));
+            // Print the prefix
+            if indent == 0 {
+                print!("");
+            } else {
+                if last_was_last {
+                    print!("    ");
+                } else {
+                    print!("|   ");
+                }
 
-            for child in element.children() {
-                elements.push((child, indent + 1));
+                for _ in 1..indent {
+                    print!("|   ");
+                }
+
+                if is_last {
+                    print!("└── ");
+                } else {
+                    print!("├── ");
+                }
+            }
+
+            // Print the element
+            println!(
+                "{} - ID: {}, Key: {}",
+                element.name(),
+                element.id(),
+                element.key().unwrap_or_else(|| "".to_string())
+            );
+
+            // Store the current indent and whether the current element is the last child
+            last_indent = indent;
+            last_was_last = is_last;
+
+            // Add children to the stack in reverse order
+            let children = element.children();
+            for (i, child) in children.iter().enumerate().rev() {
+                elements.push((child.clone(), indent + 1, i == 0));
             }
         }
     }
