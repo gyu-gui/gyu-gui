@@ -271,8 +271,11 @@ async fn async_main(application: Box<dyn Application + Send>, mut rx: mpsc::Rece
 
                     let mut root = app.app.view();
                     let mut window_element = Container::new();
+                    let mut window_key = window_element.key_mut();
+                    window_key = &mut Some("window".to_string());
 
                     window_element = window_element.width(Unit::Px(renderer.surface_width()));
+
                     let computed_style = root.computed_style_mut();
 
                     // The root element should be 100% window width if the width is not already set.
@@ -290,7 +293,7 @@ async fn async_main(application: Box<dyn Application + Send>, mut rx: mpsc::Rece
                     app.element_tree = Some(window_element);
 
                     renderer.submit();
-
+                    app.element_tree.clone().unwrap().print_tree();
                     send_response(id, wait_for_response, &tx).await;
                 }
                 Message::Close => {

@@ -62,6 +62,10 @@ impl StandardElement for Container {
         self.key.clone()
     }
 
+    fn key_mut(&mut self) -> &mut Option<String> {
+        &mut self.key
+    }
+
     fn id_mut(&mut self) -> &mut u64 {
         &mut self.id
     }

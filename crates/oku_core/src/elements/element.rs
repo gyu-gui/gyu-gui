@@ -65,6 +65,16 @@ impl StandardElement for Element {
             Element::Component(component) => component.key(),
         }
     }
+
+    fn key_mut(&mut self) -> &mut Option<String> {
+        match self {
+            Element::Container(container) => container.key_mut(),
+            Element::Text(text) => text.key_mut(),
+            Element::Empty(empty) => empty.key_mut(),
+            Element::Component(component) => component.key_mut(),
+        }
+    }
+
     fn id_mut(&mut self) -> &mut u64 {
         match self {
             Element::Container(container) => container.id_mut(),
@@ -142,3 +152,22 @@ impl StandardElement for Element {
         };
     }
 }
+
+impl Element {
+    pub fn print_tree(&self) {
+
+        let indent = 0;
+        let mut elements: Vec<(Self, usize)> = vec![(self.clone(), indent)];
+        while elements.len() > 0 {
+            let (element, indent) = elements.pop().unwrap();
+
+            println!("{}{} - ID: {}, Key: {}", "-".repeat(indent), element.name(), element.id(), element.key().unwrap_or("".to_string()));
+
+            for child in element.children() {
+                elements.push((child, indent + 1));
+            }
+        }
+    }
+}
+
+

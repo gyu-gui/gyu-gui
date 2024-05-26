@@ -18,6 +18,7 @@ pub trait StandardElement {
     fn id(&self) -> u64;
 
     fn key(&self) -> Option<String>;
+    fn key_mut(&mut self) -> &mut Option<String>;
 
     fn id_mut(&mut self) -> &mut u64;
 
