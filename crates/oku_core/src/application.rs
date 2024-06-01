@@ -1,10 +1,6 @@
 use crate::elements::element::Element;
 use std::any::Any;
 
-pub trait Application {
-    fn view(&self) -> Element;
-}
-
 pub struct Props {
     pub data: Box<dyn Any + Send>,
 }

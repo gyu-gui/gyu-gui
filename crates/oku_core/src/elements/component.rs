@@ -11,20 +11,20 @@ use taffy::{NodeId, TaffyTree};
 use crate::events::Message;
 use crate::widget_id::create_unique_widget_id;
 
-fn default_update(_msg: Message, _state: Box<dyn Any>, id: u64) {}
+pub(crate) fn default_update(_msg: Message, _state: Box<dyn Any>, id: u64) {}
 
 #[derive(Clone, Debug)]
 pub struct Component {
-    id: u64,
-    key: Option<String>,
-    children: Vec<Element>,
+    pub(crate) id: u64,
+    pub(crate) key: Option<String>,
+    pub(crate) children: Vec<Element>,
     pub update: Arc<fn(msg: Message, state: Box<dyn Any>, id: u64)>,
 }
 impl Component {
-    pub fn new() -> Component {
+    pub fn new(key: Option<&str>) -> Component {
         Component {
             id: create_unique_widget_id(),
-            key: None,
+            key: key.map(|s| s.to_string()),
             children: vec![],
             update: Arc::new(default_update),
         }
@@ -54,7 +54,7 @@ impl Component {
     }
 
     pub fn key(&self) -> Option<String> {
-        self.key.clone()
+        Some(String::from("foo"))
     }
 
     pub(crate) fn key_mut(&mut self) -> &mut Option<String> {

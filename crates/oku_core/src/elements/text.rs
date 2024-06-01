@@ -26,7 +26,7 @@ pub struct Text {
 }
 
 impl Text {
-    pub fn new(text: String) -> Text {
+    pub fn new(text: &str) -> Text {
         Text {
             id: create_unique_widget_id(),
             key: None,
@@ -34,7 +34,7 @@ impl Text {
                 ..Default::default()
             },
             children: vec![],
-            text,
+            text: text.to_string(),
             text_buffer: None,
             computed_x: 0.0,
             computed_y: 0.0,

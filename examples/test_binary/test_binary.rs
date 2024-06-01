@@ -11,19 +11,28 @@ use oku_core::reactive::reactive::RUNTIME;
 use oku_core::OkuOptions;
 use oku_core::RendererType::Wgpu;
 use std::sync::Arc;
+use oku_core::components::component::{ComponentOrElement, ComponentSpecification};
 use oku_core::elements::standard_element::StandardElement;
+use oku_core::renderer::color::Color;
 
 struct Test1 {}
 
 impl Component for Test1 {
-    fn view(&self, _props: Option<&Props>, key: Option<String>) -> Element {
-        Element::Text(Text::new(String::from("Hello")))
+    fn view(_props: Option<&Props>, key: Option<String>) -> ComponentSpecification {
+        ComponentSpecification {
+            component: |_, _| ComponentOrElement::Element(Element::Container(Container::new().width(Unit::Px(100.0)).background(Color::new_from_rgba_u8(255, 0, 0, 255)))),
+            key,
+            children: vec![
+                ComponentOrElement::Element(Element::Text(Text::new("Hello, World 1!"))),
+                ComponentOrElement::Element(Element::Text(Text::new("Hello, World 2!"))),
+            ],
+        }
     }
 }
 
 struct Hello {}
 
-impl Component<u64, u64> for Hello {
+/*impl Component<u64, u64> for Hello {
     fn view(&self, props: Option<&Props>, key: Option<String>) -> Element {
         if RUNTIME.get_state::<u32>(3).is_none() {
             RUNTIME.set_state(3, 0u32);
@@ -54,22 +63,8 @@ impl Component<u64, u64> for Hello {
     }
 
     fn update(message: u64, state: &mut u64) {}
-}
-
-struct App {}
-
-impl oku_core::application::Application for App {
-    fn view(&self) -> Element {
-        let hello = Hello {};
-        let hello_props = Props {
-            data: Box::new(12_u32),
-        };
-
-        hello.view(Some(&hello_props), None)
-    }
-}
+}*/
 
 fn main() {
-    let application = App {};
-    oku_core::oku_main_with_options(Box::new(application), Some(OkuOptions { renderer: Wgpu }));
+    oku_core::oku_main_with_options(Test1::view(None, Some(String::from("foo"))), Some(OkuOptions { renderer: Wgpu }));
 }

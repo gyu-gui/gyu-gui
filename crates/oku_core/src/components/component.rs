@@ -2,11 +2,24 @@ use crate::application::Props;
 use crate::elements::element::Element;
 use crate::reactive::reactive::RUNTIME;
 
+#[derive(Clone)]
+pub enum ComponentOrElement {
+    ComponentSpec(ComponentSpecification),
+    Element(Element),
+}
+
+#[derive(Clone)]
+pub struct ComponentSpecification {
+    pub component: fn (props: Option<&Props>, key: Option<String>) -> ComponentOrElement,
+    pub key: Option<String>,
+    pub children: Vec<ComponentOrElement>
+}
+
 pub trait Component<State = (), Message = ()>
 where
     State: Clone + Send + Sized + 'static,
 {
-    fn view(&self, props: Option<&Props>, key: Option<String>) -> Element;
+    fn view(props: Option<&Props>, key: Option<String>) -> ComponentSpecification;
 
     fn get_state(&self) -> Option<State> {
         RUNTIME.get_state(0)
