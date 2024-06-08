@@ -222,11 +222,6 @@ impl ApplicationHandler for OkuState {
     }
 }
 
-unsafe impl Send for SoftwareRenderer {
-    // Implement Send trait for SoftBufferRenderer
-    // Ensure that all fields are Send
-}
-
 impl OkuState {
     fn send_message(&mut self, message: InternalMessage, wait_for_response: bool) {
         let id = self.id;

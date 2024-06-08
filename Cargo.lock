@@ -1819,7 +1819,7 @@ dependencies = [
 [[package]]
 name = "softbuffer"
 version = "0.4.3"
-source = "git+https://github.com/rust-windowing/softbuffer?rev=88740e2cea40bb73d5967a4360d1c80194d01f0a#88740e2cea40bb73d5967a4360d1c80194d01f0a"
+source = "git+https://github.com/rust-windowing/softbuffer?rev=af8c5a7ea5d68ef539ac0b4546ebbd9e482e1e71#af8c5a7ea5d68ef539ac0b4546ebbd9e482e1e71"
 dependencies = [
  "as-raw-xcb-connection",
  "bytemuck",

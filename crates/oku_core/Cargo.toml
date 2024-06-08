@@ -9,7 +9,7 @@ resolver = "2"
 
 winit = { git = "https://github.com/rust-windowing/winit", rev = "3e8fa410735cfb1486b6f7fd636c810fffd6c268" }
 tiny-skia = { git = "https://github.com/RazrFalcon/tiny-skia", rev = "9b673e6c14e5e0c3f98413f8fa7e3a6cb315183b" }
-softbuffer = { git = "https://github.com/rust-windowing/softbuffer", rev = "88740e2cea40bb73d5967a4360d1c80194d01f0a" }
+softbuffer = { git = "https://github.com/rust-windowing/softbuffer", rev = "af8c5a7ea5d68ef539ac0b4546ebbd9e482e1e71" }
 cosmic-text = { git = "https://github.com/pop-os/cosmic-text", rev = "2f5f2c63dabc0173adaa95d619a777454a3c39af" }
 taffy = { git = "https://github.com/DioxusLabs/taffy", rev = "bad7c40773bcf82edf575964ff20cb1557f8c285" }
 accesskit = "0.13.0"
