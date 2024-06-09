@@ -282,14 +282,14 @@ async fn async_main(application: ComponentSpecification, mut rx: mpsc::Receiver<
 
 
                     let mut root = {
-                        
+
                         let mut window_element = Container::new();
                         *window_element.id_mut() = 9999;
-                        
+
                         let window_element = window_element.width(Unit::Px(renderer.surface_width()));
 
                         let root: Rc<RefCell<Box<dyn Element>>> = Rc::new(RefCell::new(Box::new(window_element)));
-                        
+
                         let mut to_visit: Vec<(Rc<RefCell<ComponentSpecification>>, Rc<RefCell<Box<dyn Element>>>)> = vec![(
                             Rc::new(RefCell::new(app.app.clone())), root.clone()
                         )];
@@ -326,9 +326,6 @@ async fn async_main(application: ComponentSpecification, mut rx: mpsc::Receiver<
                             // Add the new element to the parent.
                             let new_element = Rc::new(RefCell::new(new_element));
                             
-                            // This clone is probably not correct.
-                            parent.borrow_mut().children_mut().push(new_element.borrow_mut().clone());
-                            
                             // Add the children of the new element to the visit list.
                             for child in &component.borrow().children {
                                 match child {
@@ -340,6 +337,9 @@ async fn async_main(application: ComponentSpecification, mut rx: mpsc::Receiver<
                                     }
                                 }
                             }
+
+                            // This clone is probably not correct.
+                            parent.borrow_mut().children_mut().push(new_element.borrow_mut().clone());
                             // ...
                         }
                         
@@ -354,10 +354,10 @@ async fn async_main(application: ComponentSpecification, mut rx: mpsc::Receiver<
                     if computed_style.width.is_auto() {
                         root.computed_style_mut().width = Unit::Px(renderer.surface_width());
                     }
-                    
+
                     let mut window_element: Box<dyn Element> = root;
-                    window_element = layout(renderer.surface_width(), renderer.surface_height(), app.renderer_context.as_mut().unwrap(), &mut window_element);   
-                    
+                    window_element = layout(renderer.surface_width(), renderer.surface_height(), app.renderer_context.as_mut().unwrap(), &mut window_element);
+
                     
                     window_element.draw(renderer, app.renderer_context.as_mut().unwrap());
                     

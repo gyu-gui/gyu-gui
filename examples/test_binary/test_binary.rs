@@ -30,9 +30,20 @@ impl Component for Test1 {
                 ComponentOrElement::Element(Box::new(
                     Container::new()
                         .width(Unit::Px(100.0))
-                        .background(Color::new_from_rgba_u8(0, 255, 0, 255)))
-                ),
-                ComponentOrElement::Element(Box::new(Text::new("Hello, World 2!")))],
+                        .background(Color::new_from_rgba_u8(0, 255, 0, 255))
+                    .add_child(Box::new(Container::new()
+                        .width(Unit::Px(5.0)).
+                        height(Unit::Px(5.0))
+                        .background(Color::new_from_rgba_u8(0, 0, 255, 255)))
+                ))),
+                ComponentOrElement::Element(Box::new(Text::new("Hello, World 2!"))),
+                ComponentOrElement::Element(Box::new(
+                Container::new()
+                    .width(Unit::Px(10.0)).
+                    height(Unit::Px(10.0))
+                    .background(Color::new_from_rgba_u8(255, 255, 0, 255))
+            ))
+            ],
         }
     }
 }
