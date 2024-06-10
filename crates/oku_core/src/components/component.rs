@@ -4,13 +4,13 @@ use crate::reactive::reactive::RUNTIME;
 
 #[derive(Clone)]
 pub enum ComponentOrElement {
-    ComponentSpec(ComponentSpecification),
+    ComponentSpec(fn (props: Option<&Props>, key: Option<String>) -> ComponentSpecification),
     Element(Box<dyn Element>),
 }
 
 #[derive(Clone)]
 pub struct ComponentSpecification {
-    pub component: fn (props: Option<&Props>, key: Option<String>) -> ComponentOrElement,
+    pub component: ComponentOrElement,
     pub key: Option<String>,
     pub children: Vec<ComponentOrElement>
 }

@@ -300,47 +300,19 @@ async fn async_main(application: ComponentSpecification, mut rx: mpsc::Receiver<
                             let component = component.0;
 
                             // Ignore the key and props for now... set key = None and props = None.
-                            let new_element = (component.borrow().component)(None, None);
+                            //let new_element = (component.borrow().component)(None, None);
                             
                             // Build either a component or an element.
-                            let new_element = match new_element {
-                                ComponentOrElement::Element(element) => element,
+                            match &component.borrow().component {
+                                ComponentOrElement::Element(element) => {
+                                    let element = element.clone();
+                                    parent.borrow_mut().children_mut().push(element);
+                                },
                                 ComponentOrElement::ComponentSpec(component_spec) => {
-                                    Box::new(Component {
-                                        id: create_unique_widget_id(),
-                                        key: component_spec.key.clone(),
-                                        children: vec![],
-                                        style: Style {
-                                            ..Default::default()
-                                        },
-                                        computed_x: 0.0,
-                                        computed_y: 0.0,
-                                        computed_width: 0.0,
-                                        computed_height: 0.0,
-                                        computed_padding: [0.0, 0.0, 0.0, 0.0],
-                                        update: Arc::new(default_update),
-                                    })
+                                    let q = Rc::new(RefCell::new(component_spec(None, None)));
+                                    to_visit.push((q, parent.clone()));
                                 }
                             };
-                            
-                            // Add the new element to the parent.
-                            let new_element = Rc::new(RefCell::new(new_element));
-                            
-                            // Add the children of the new element to the visit list.
-                            for child in &component.borrow().children {
-                                match child {
-                                    ComponentOrElement::Element(element) => {
-                                        new_element.borrow_mut().children_mut().push(element.clone());
-                                    }
-                                    ComponentOrElement::ComponentSpec(component_spec) => {
-                                        to_visit.push((Rc::new(RefCell::new(component_spec.clone())), new_element.clone()));
-                                    }
-                                }
-                            }
-
-                            // This clone is probably not correct.
-                            parent.borrow_mut().children_mut().push(new_element.borrow_mut().clone());
-                            // ...
                         }
                         
                         // Borrow checker issues... Return the root element.
@@ -472,7 +444,6 @@ fn layout(_window_width: f32, _window_height: f32, render_context: &mut RenderCo
         .unwrap();
 
     root_element.finalize_layout(&mut taffy_tree, root_node, 0.0, 0.0);
-    taffy_tree.print_tree(root_node);
     
     root_element.clone()
 }
