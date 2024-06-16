@@ -4,7 +4,7 @@ use crate::reactive::reactive::RUNTIME;
 
 #[derive(Clone)]
 pub enum ComponentOrElement {
-    ComponentSpec(fn (props: Option<&Props>, key: Option<String>) -> ComponentSpecification),
+    ComponentSpec(fn (props: Option<&Props>, key: Option<String>, children: Vec<ComponentSpecification>) -> ComponentSpecification),
     Element(Box<dyn Element>),
 }
 
@@ -12,7 +12,7 @@ pub enum ComponentOrElement {
 pub struct ComponentSpecification {
     pub component: ComponentOrElement,
     pub key: Option<String>,
-    pub children: Vec<ComponentOrElement>
+    pub children: Vec<ComponentSpecification>
 }
 
 pub trait Component<State = (), Message = ()>

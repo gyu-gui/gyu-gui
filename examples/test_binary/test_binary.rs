@@ -24,11 +24,34 @@ pub fn app(_props: Option<&Props>, key: Option<String>) -> ComponentSpecificatio
     }
 }
 
-fn foo(_props: Option<&Props>, key: Option<String>) -> ComponentSpecification {
+fn foo(_props: Option<&Props>, key: Option<String>, children: Vec<ComponentSpecification>) -> ComponentSpecification {
+    let mut c = Container::new()
+        .background(Color::new_from_rgba_u8(255, 0, 0, 255))
+        .width(Unit::Px(200.0))
+        .height(Unit::Px(200.0));
+    
+    *c.id_mut() = 55;
     ComponentSpecification {
-        component: ComponentOrElement::Element(Box::new(Text::new("Hello Oku"))),
+        component: ComponentOrElement::Element(Box::new(c
+        )),
         key,
-        children: vec![],
+        children: vec![
+            ComponentSpecification {
+                component: ComponentOrElement::Element(Box::new(Text::new("Hello, world 1!"))),
+                key: None,
+                children: vec![],
+            },
+            ComponentSpecification {
+                component: ComponentOrElement::Element(Box::new(Text::new("Hello, world 2!"))),
+                key: None,
+                children: vec![],
+            },
+            ComponentSpecification {
+                component: ComponentOrElement::Element(Box::new(Text::new("Hello, world 2!"))),
+                key: None,
+                children: vec![],
+            }
+        ],
     }
 }
 

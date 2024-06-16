@@ -45,53 +45,21 @@ impl dyn Element {
 
     pub fn print_tree(&self) {
         let mut elements: Vec<(Box<Self>, usize, bool)> = vec![(self.clone_box(), 0, true)];
-        let mut last_indent = 0;
-        let mut last_was_last = true;
-
         while let Some((element, indent, is_last)) = elements.pop() {
-            if indent > last_indent {
-                print!("{: <1$}", "", (indent - last_indent) * 4);
-            } else if indent < last_indent {
-                print!("{: <1$}", "", (last_indent - indent) * 4);
+            let mut prefix = String::new();
+            for _ in 0..indent {
+                prefix.push_str("  ");
             }
-
-            // Print the prefix
-            if indent == 0 {
-                print!("");
+            if is_last {
+                prefix.push_str("└─");
             } else {
-                if last_was_last {
-                    print!("    ");
-                } else {
-                    print!("|   ");
-                }
-
-                for _ in 1..indent {
-                    print!("|   ");
-                }
-
-                if is_last {
-                    print!("└── ");
-                } else {
-                    print!("├── ");
-                }
+                prefix.push_str("├─");
             }
-
-            // Print the element
-            println!(
-                "{} - ID: {}, Key: {}",
-                element.name(),
-                element.id(),
-                element.key().unwrap_or_else(|| "".to_string())
-            );
-
-            // Store the current indent and whether the current element is the last child
-            last_indent = indent;
-            last_was_last = is_last;
-
-            // Add children to the stack in reverse order
+            println!("{}{}", prefix, element.name());
             let children = element.children();
-            for (i, child) in children.iter().enumerate().rev() {
-                elements.push((child.clone(), indent + 1, i == 0));
+            for (i, child) in children.iter().enumerate() {
+                let is_last = i == children.len() - 1;
+                elements.push((child.clone(), indent + 1, is_last));
             }
         }
     }

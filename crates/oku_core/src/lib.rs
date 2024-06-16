@@ -11,10 +11,13 @@ pub mod reactive;
 mod tests;
 
 use std::cell::RefCell;
+use std::collections::VecDeque;
 use std::rc::Rc;
 use cosmic_text::{FontSystem, SwashCache};
 use std::sync::Arc;
 use std::time;
+use slotmap::{DefaultKey, SlotMap};
+use taffy::NodeId;
 use tokio::sync::mpsc;
 use winit::application::ApplicationHandler;
 use winit::dpi::PhysicalSize;
@@ -266,59 +269,99 @@ async fn async_main(application: ComponentSpecification, mut rx: mpsc::Receiver<
                     
                     renderer.surface_set_clear_color(Color::new_from_rgba_u8(255, 255, 255, 255));
 
-                    //let mut root = (app.app.component)(None, None);
+                    let mut elements: SlotMap<DefaultKey, (Box<dyn Element>, Vec<DefaultKey>, Option<DefaultKey>)> = SlotMap::new();
 
-                    /*let mut root = match root {
-                        crate::components::component::ComponentOrElement::Element(element) => element,
-                        crate::components::component::ComponentOrElement::ComponentSpec(component_spec) => {
-                            Element::Component(Component {
-                                id: create_unique_widget_id(),
-                                key: None,
-                                children: vec![],
-                                update: Arc::new(default_update),
-                            })
-                        }
-                    };*/
+                    let mut window_element = Container::new().background(Color::new_from_rgba_u8(0, 0, 255, 255));
+                    *window_element.id_mut() = 9999;
 
+                    let window_element = window_element.width(Unit::Px(renderer.surface_width()));
 
-                    let mut root = {
+                    let root: DefaultKey = elements.insert((Box::new(window_element), vec![], None));
 
-                        let mut window_element = Container::new();
-                        *window_element.id_mut() = 9999;
-
-                        let window_element = window_element.width(Unit::Px(renderer.surface_width()));
-
-                        let root: Rc<RefCell<Box<dyn Element>>> = Rc::new(RefCell::new(Box::new(window_element)));
-
-                        let mut to_visit: Vec<(Rc<RefCell<ComponentSpecification>>, Rc<RefCell<Box<dyn Element>>>)> = vec![(
+                    {
+                        let mut to_visit: Vec<(Rc<RefCell<ComponentSpecification>>, DefaultKey)> = vec![(
                             Rc::new(RefCell::new(app.app.clone())), root.clone()
                         )];
 
                         while let Some(component) = to_visit.pop() {
-                            
-                            let mut parent = component.1;
+                            let parent = component.1;
                             let component = component.0;
 
                             // Ignore the key and props for now... set key = None and props = None.
                             //let new_element = (component.borrow().component)(None, None);
-                            
+
                             // Build either a component or an element.
+
+                            let children = component.borrow().children.clone();
                             match &component.borrow().component {
                                 ComponentOrElement::Element(element) => {
-                                    let element = element.clone();
-                                    parent.borrow_mut().children_mut().push(element);
+                                    let new_element = elements.insert((element.clone(), vec![], Some(parent.clone())));
+                                    elements[parent].1.push(new_element.clone());
+                                    for child in children {
+                                        println!("adding child with parent: {:?}", new_element);
+                                        to_visit.push((Rc::new(RefCell::new(child)), new_element.clone()));
+                                    }
                                 },
                                 ComponentOrElement::ComponentSpec(component_spec) => {
-                                    let q = Rc::new(RefCell::new(component_spec(None, None)));
-                                    to_visit.push((q, parent.clone()));
+                                    let next_component_spec = Rc::new(RefCell::new(component_spec(None, None, children)));
+                                    to_visit.push((next_component_spec, parent.clone()));
                                 }
                             };
                         }
-                        
-                        // Borrow checker issues... Return the root element.
-                        let x = (*root.borrow()).clone();
-                        x
-                    };
+                    }
+
+                    let mut levels: Vec<Vec<DefaultKey>> = vec![];
+
+                    // Level order traversal
+                    let mut to_visit: VecDeque<DefaultKey> = VecDeque::new();
+                    to_visit.push_back(root.clone());
+                    let mut level = 0;
+
+                    while !to_visit.is_empty() {
+                        let mut next_level: Vec<DefaultKey> = vec![];
+                        let to_pop = to_visit.len();
+                        for _ in 0..to_pop {
+                            let node = to_visit.pop_front().unwrap();
+                            let children = elements[node].1.clone();
+                            next_level.push(node.clone());
+                            for child in children {
+                                to_visit.push_back(child);
+                            }
+                        }
+                        levels.push(next_level);
+                        level += 1;
+                    }
+
+                    for (levelno, level) in levels.iter().enumerate() {
+                        for node in level {
+                            let element = elements.get_mut(*node).unwrap().0.clone();
+                            let mut parent_id = 0;
+                            if let Some(parent) = elements.get(*node).unwrap().2 {
+                                parent_id = elements[parent].0.id();
+                            }
+                            println!("level {} element: {} {} parent {}", levelno, element.name(), element.id(), parent_id);
+                        }
+                    }
+
+                    println!("levels: {:?}", level);
+
+                    for level in levels.iter().rev() {
+                        for node in level {
+                            let node = elements.get(*node).unwrap().clone();
+                            if let Some(parent) = node.2 {
+                                let parent = elements.get_mut(parent).unwrap();
+                                parent.0.children_mut().push(node.0);
+                            }
+                        }
+                    }
+
+                    let mut root = elements.get_mut(root).unwrap().0.clone();
+
+                    for child in root.children() {
+                        for child in child.children() {
+                            println!("child_: {}", child.name());
+                        }
+                    }
 
                     let computed_style = root.computed_style_mut();
 
