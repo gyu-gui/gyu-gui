@@ -483,7 +483,7 @@ fn layout(_window_width: f32, _window_height: f32, render_context: &mut RenderCo
     let root_node = root_element.compute_layout(&mut taffy_tree, &mut render_context.font_system);
 
     taffy_tree
-        .compute_layout_with_measure(root_node, taffy::Size::max_content(), |known_dimensions, available_space, _node_id, node_context| measure_content(known_dimensions, available_space, node_context, &mut render_context.font_system))
+        .compute_layout_with_measure(root_node, taffy::Size::max_content(), |known_dimensions, available_space, _node_id, node_context, style| measure_content(known_dimensions, available_space, node_context, &mut render_context.font_system))
         .unwrap();
 
     root_element.finalize_layout(&mut taffy_tree, root_node, 0.0, 0.0);

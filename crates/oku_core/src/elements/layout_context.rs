@@ -8,7 +8,7 @@ pub struct CosmicTextContent {
 impl CosmicTextContent {
     pub(crate) fn new(metrics: Metrics, text: &str, attrs: Attrs, font_system: &mut FontSystem) -> Self {
         let mut buffer = Buffer::new_empty(metrics);
-        buffer.set_size(font_system, f32::INFINITY, f32::INFINITY);
+        buffer.set_size(font_system, Some(f32::INFINITY), Some(f32::INFINITY));
         buffer.set_text(font_system, text, attrs, Shaping::Advanced);
         Self { buffer }
     }
@@ -27,7 +27,7 @@ impl CosmicTextContent {
             AvailableSpace::Definite(height) => height,
         });
         // self.buffer.set_size(font_system, width_constraint, height_constraint);
-        self.buffer.set_size(font_system, width_constraint, f32::INFINITY);
+        self.buffer.set_size(font_system, Some(width_constraint), Some(f32::INFINITY));
 
         // Compute layout
         self.buffer.shape_until_scroll(font_system, true);
