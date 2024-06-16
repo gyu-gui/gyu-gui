@@ -18,36 +18,34 @@ struct Test1 {}
 
 pub fn app(_props: Option<&Props>, key: Option<String>) -> ComponentSpecification {
     ComponentSpecification {
-        component: ComponentOrElement::Element(Box::new(Container::new())),
+        component: Container::new().into(),
         key,
         children: vec![],
     }
 }
 
 fn foo(_props: Option<&Props>, key: Option<String>, children: Vec<ComponentSpecification>) -> ComponentSpecification {
-    let mut c = Container::new()
+    let background = Container::new()
         .background(Color::new_from_rgba_u8(255, 0, 0, 255))
         .width(Unit::Px(200.0))
         .height(Unit::Px(200.0));
-    
-    *c.id_mut() = 55;
+
     ComponentSpecification {
-        component: ComponentOrElement::Element(Box::new(c
-        )),
+        component: background.into(),
         key,
         children: vec![
             ComponentSpecification {
-                component: ComponentOrElement::Element(Box::new(Text::new("Hello, world 1!"))),
+                component: Text::new("Hello, world 1!").into(),
                 key: None,
                 children: vec![],
             },
             ComponentSpecification {
-                component: ComponentOrElement::Element(Box::new(Text::new("Hello, world 2!"))),
+                component: Text::new("Hello, world 2!").into(),
                 key: None,
                 children: vec![],
             },
             ComponentSpecification {
-                component: ComponentOrElement::Element(Box::new(Text::new("Hello, world 2!"))),
+                component: Text::new("Hello, world 2!").into(),
                 key: None,
                 children: vec![],
             }

@@ -7,6 +7,7 @@ use std::any::Any;
 use std::fmt::Debug;
 use std::sync::Arc;
 use taffy::{NodeId, TaffyTree};
+use crate::components::component::ComponentOrElement;
 use crate::events::Message;
 
 pub trait Element: Any + StandardElementClone + Debug + Send {
@@ -39,6 +40,24 @@ pub trait Element: Any + StandardElementClone + Debug + Send {
     fn as_any(&self) -> &dyn Any;
     
     fn as_any_mut(&mut self) -> &mut dyn Any;
+}
+
+impl<T: Element> From<T> for Box<dyn Element> {
+    fn from(element: T) -> Self {
+        Box::new(element)
+    }
+}
+
+impl<T: Element> From<T> for ComponentOrElement {
+    fn from(element: T) -> Self {
+        ComponentOrElement::Element(Box::new(element))
+    }
+}
+
+impl From<Box<dyn Element>> for ComponentOrElement {
+    fn from(element: Box<dyn Element>) -> Self {
+        ComponentOrElement::Element(element)
+    }
 }
 
 impl dyn Element {
