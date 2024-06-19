@@ -2,9 +2,11 @@ use crate::application::Props;
 use crate::elements::element::Element;
 use crate::reactive::reactive::RUNTIME;
 
+type ViewFn = fn (props: Option<&Props>, key: Option<String>, children: Vec<ComponentSpecification>) -> ComponentSpecification;
+
 #[derive(Clone)]
 pub enum ComponentOrElement {
-    ComponentSpec(fn (props: Option<&Props>, key: Option<String>, children: Vec<ComponentSpecification>) -> ComponentSpecification),
+    ComponentSpec(ViewFn),
     Element(Box<dyn Element>),
 }
 
