@@ -1,9 +1,14 @@
+use std::any::Any;
+use std::sync::Arc;
 use crate::elements::layout_context::LayoutContext;
 use crate::elements::style::Style;
 use crate::RenderContext;
 use cosmic_text::FontSystem;
 use taffy::{NodeId, TaffyTree};
+use crate::elements::container::Container;
 use crate::elements::element::Element;
+use crate::events::Message;
+use crate::renderer::renderer::Renderer;
 use crate::widget_id::create_unique_widget_id;
 
 #[derive(Clone, Default, Debug)]
@@ -23,57 +28,72 @@ impl Empty {
     }
 }
 
-impl Empty {
-    pub fn add_child(self, _widget: Box<dyn Element>) -> Empty {
-        panic!("Empty cannot have children");
+impl Element for Empty {
+    fn children(&self) -> Vec<Box<dyn Element>> {
+        vec![]
     }
 
-    pub fn children(&self) -> Vec<Box<dyn Element>> {
-        self.children.clone()
+    fn children_mut(&mut self) -> &mut Vec<Box<dyn Element>> {
+        todo!()
     }
 
-    pub fn children_mut(&mut self) -> &mut Vec<Box<dyn Element>> {
-        &mut self.children
-    }
-
-    pub const fn name(&self) -> &'static str {
+    fn name(&self) -> &'static str {
         "Empty"
     }
 
-    pub const fn id(&self) -> u64 {
-        self.id
+    fn id(&self) -> u64 {
+        todo!()
     }
 
-    pub fn key(&self) -> Option<String> {
-        self.key.clone()
-    }
-    pub(crate) fn key_mut(&mut self) -> &mut Option<String> {
-        &mut self.key
+    fn key(&self) -> Option<String> {
+        todo!()
     }
 
-    pub fn id_mut(&mut self) -> &mut u64 {
-        &mut self.id
+    fn key_mut(&mut self) -> &mut Option<String> {
+        todo!()
     }
 
-    pub fn draw(&mut self, _render_context: &mut RenderContext) {}
-
-    pub fn debug_draw(&mut self, _render_context: &mut RenderContext) {}
-
-    pub fn compute_layout(&mut self, taffy_tree: &mut TaffyTree<LayoutContext>, _font_system: &mut FontSystem) -> NodeId {
-        taffy_tree.new_leaf(Style::default().into()).unwrap()
+    fn id_mut(&mut self) -> &mut u64 {
+        todo!()
     }
 
-    pub fn finalize_layout(&mut self, _taffy_tree: &mut TaffyTree<LayoutContext>, _root_node: NodeId, _x: f32, _y: f32) {}
-
-    pub fn computed_style(&self) -> Style {
-        Style::default()
+    fn draw(&mut self, renderer: &mut Box<dyn Renderer + Send>, render_context: &mut RenderContext) {
+        todo!()
     }
 
-    pub fn computed_style_mut(&mut self) -> &mut Style {
-        panic!("Empty cannot have a style");
+    fn debug_draw(&mut self, render_context: &mut RenderContext) {
+        todo!()
     }
 
-    pub fn in_bounds(&self, _x: f32, _y: f32) -> bool {
-        false
+    fn compute_layout(&mut self, taffy_tree: &mut TaffyTree<LayoutContext>, font_system: &mut FontSystem) -> NodeId {
+        todo!()
+    }
+
+    fn finalize_layout(&mut self, taffy_tree: &mut TaffyTree<LayoutContext>, root_node: NodeId, x: f32, y: f32) {
+        todo!()
+    }
+
+    fn computed_style(&self) -> Style {
+        todo!()
+    }
+
+    fn computed_style_mut(&mut self) -> &mut Style {
+        todo!()
+    }
+
+    fn in_bounds(&self, x: f32, y: f32) -> bool {
+        todo!()
+    }
+
+    fn add_update_handler(&mut self, update: Arc<fn(Message, Box<dyn Any>, u64)>) {
+        todo!()
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        todo!()
+    }
+
+    fn as_any_mut(&mut self) -> &mut dyn Any {
+        todo!()
     }
 }
