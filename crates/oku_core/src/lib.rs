@@ -249,6 +249,31 @@ async fn send_response(id: u64, wait_for_response: bool, tx: &mpsc::Sender<(u64,
 use crate::events::{ClickMessage};
 use crate::widget_id::{create_unique_widget_id, reset_unique_widget_id};
 
+
+unsafe fn do_unsafe_tree_work(component_specification: ComponentSpecification, mut root: Box<dyn Element>) {
+    
+    return;
+    
+    struct ElementTreeNode {
+        element: *mut Box<dyn Element>,
+    }
+    
+    let root_element_tree_node = ElementTreeNode {
+        element: &mut root,
+    };
+    
+     let mut to_visit: Vec<(Rc<RefCell<ComponentSpecification>>, ElementTreeNode)> = vec![(Rc::new(RefCell::new(component_specification.clone())), root_element_tree_node)];
+
+    println!("here");
+    while to_visit.len() != 0 {
+        let popped_item = to_visit.pop().unwrap();
+        let component_specification = to_visit.pop().unwrap().0;
+        let current_element = popped_item.1;
+        
+    }
+
+}
+
 async fn async_main(application: ComponentSpecification, mut rx: mpsc::Receiver<(u64, bool, InternalMessage)>, tx: mpsc::Sender<(u64, InternalMessage)>) {
     let mut app = Box::new(App {
         app: application,
@@ -270,14 +295,20 @@ async fn async_main(application: ComponentSpecification, mut rx: mpsc::Receiver<
                     renderer.surface_set_clear_color(Color::new_from_rgba_u8(255, 255, 255, 255));
 
                     let mut elements: SlotMap<DefaultKey, (Box<dyn Element>, Vec<DefaultKey>, Option<DefaultKey>)> = SlotMap::new();
-
+                    
                     let mut window_element = Container::new().background(Color::new_from_rgba_u8(0, 0, 255, 255));
                     *window_element.id_mut() = 9999;
 
                     let window_element = window_element.width(Unit::Px(renderer.surface_width()));
 
+                    unsafe {
+                        do_unsafe_tree_work(app.app.clone(), Box::new(window_element.clone()));
+                    }
+                    
+                    
                     let root: DefaultKey = elements.insert((Box::new(window_element), vec![], None));
 
+                    
                     {
                         let mut to_visit: Vec<(Rc<RefCell<ComponentSpecification>>, DefaultKey)> = vec![(
                             Rc::new(RefCell::new(app.app.clone())), root.clone()
@@ -287,7 +318,7 @@ async fn async_main(application: ComponentSpecification, mut rx: mpsc::Receiver<
                             let parent = component.1;
                             let component = component.0;
 
-                            // Ignore the key and props for now... set key = None and props = None.
+                            // Ignore the key for now... set key = None.
                             //let new_element = (component.borrow().component)(None, None);
 
                             // Build either a component or an element.
@@ -299,13 +330,15 @@ async fn async_main(application: ComponentSpecification, mut rx: mpsc::Receiver<
                                     let new_element = elements.insert((element.clone(), vec![], Some(parent.clone())));
                                     elements[parent].1.push(new_element.clone());
                                     for child in children {
-                                        println!("adding child with parent: {:?}", new_element);
+                                        //println!("adding child with parent: {:?}", new_element);
                                         to_visit.push((Rc::new(RefCell::new(child)), new_element.clone()));
                                     }
                                 },
                                 ComponentOrElement::ComponentSpec(component_spec) => {
+                                    
                                     let next_component_spec = Rc::new(RefCell::new(component_spec(props, children)));
                                     to_visit.push((next_component_spec, parent.clone()));
+                                    
                                 }
                             };
                         }
@@ -340,11 +373,11 @@ async fn async_main(application: ComponentSpecification, mut rx: mpsc::Receiver<
                             if let Some(parent) = elements.get(*node).unwrap().2 {
                                 parent_id = elements[parent].0.id();
                             }
-                            println!("level {} element: {} {} parent {}", levelno, element.name(), element.id(), parent_id);
+                            //println!("level {} element: {} {} parent {}", levelno, element.name(), element.id(), parent_id);
                         }
                     }
 
-                    println!("levels: {:?}", level);
+                    //println!("levels: {:?}", level);
 
                     for level in levels.iter().rev() {
                         for node in level {
@@ -360,7 +393,7 @@ async fn async_main(application: ComponentSpecification, mut rx: mpsc::Receiver<
 
                     for child in root.children() {
                         for child in child.children() {
-                            println!("child_: {}", child.name());
+                            //println!("child_: {}", child.name());
                         }
                     }
 

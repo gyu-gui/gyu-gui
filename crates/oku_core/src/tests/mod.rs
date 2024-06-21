@@ -7,6 +7,10 @@ use crate::widget_id::reset_unique_widget_id;
 
 #[test]
 fn diff_assigns_stable_id_when_child_is_removed() {
+    
+    // Container
+    // ├── Text("b")
+    // └── Text("c")
     let mut old_a = Container::new();
     let old_b = Text::new("b");
     let old_c = Text::new("c");
@@ -19,7 +23,10 @@ fn diff_assigns_stable_id_when_child_is_removed() {
     
     // Reset the new widget id back to zero, act like this is a new render.
     reset_unique_widget_id();
-    
+
+    // Container
+    // ├── Empty
+    // └── Text("c")
     let mut new_a = Container::new();
     let new_b: Box<dyn Element> = Empty::new().into();
     let new_c = Text::new("c").into();
@@ -29,7 +36,5 @@ fn diff_assigns_stable_id_when_child_is_removed() {
 
     new_a.print_tree();
     
-    //let new_tree = diff_tree(Some(&mut old_a), Some(&mut new_a));
-
     assert_eq!(old_a.children()[1].id(), new_a.children()[1].id(), "test that b has the same id when removed");
 }
