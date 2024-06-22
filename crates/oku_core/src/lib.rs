@@ -283,20 +283,17 @@ fn construct_element_tree_from_component_specification(component_specification: 
 
         match &mut component.borrow_mut().component {
             ComponentOrElement::Element(element) => {
-
-                // let new_element = elements.insert((element.clone(), vec![], Some(parent.clone())));
                 let mut element = element.clone();
                 let element_ptr = &mut *element as *mut dyn Element;
                 parent.as_mut().unwrap().children_mut().push(element);
 
                 for child in children {
-                    //println!("adding child with parent: {:?}", new_element);
                     to_visit.push((Rc::new(RefCell::new(child)), element_ptr));
                 }
             },
             ComponentOrElement::ComponentSpec(component_spec) => {
                 let next_component_spec = Rc::new(RefCell::new(component_spec(props, children)));
-                to_visit.push((next_component_spec, parent.clone()));
+                to_visit.push((next_component_spec, parent));
             }
         };
     }
