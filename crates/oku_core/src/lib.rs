@@ -27,6 +27,7 @@ use winit::event::{DeviceId, ElementState, KeyEvent, MouseButton, StartCause, Wi
 use winit::event_loop::{ActiveEventLoop, ControlFlow, EventLoop};
 use winit::keyboard::{Key, NamedKey};
 use winit::window::{Window, WindowId};
+use crate::components::props::Props;
 
 use crate::elements::container::Container;
 use crate::elements::element::{Element, StandardElementClone};
@@ -264,7 +265,7 @@ struct TreeVisitorNode {
     component_specification: Rc<RefCell<ComponentDefinition>>,
     parent: *mut dyn Element,
     parent_component_node: *mut ComponentTreeNode,
-    old_node: Option<*mut ComponentTreeNode>,
+    old_component_node: Option<*mut ComponentTreeNode>,
 }
 
 impl ComponentTreeNode {
@@ -294,17 +295,26 @@ impl ComponentTreeNode {
 
 // This function constructs the render tree from the component specification.
 // The function is safe despite using multiple shared mutable references, because the references are only used to traverse the tree.
-fn construct_render_tree_from_user_tree(component_definition: ComponentDefinition, root: &mut Box<dyn Element>, mut old_root: Option<&Box<ComponentTreeNode>>) -> ComponentTreeNode {
-    let mut component_tree = ComponentTreeNode {
-        key: None,
-        tag: "root".to_string(),
-        children: vec![],
-        id: 0
-    };
-
-    let old_root_as_ptr = old_root.map(|old_root| old_root.as_ref() as *const ComponentTreeNode as *mut ComponentTreeNode);
-
+fn construct_render_tree_from_user_tree(component_definition: ComponentDefinition, root: &mut Box<dyn Element>, old_component_tree: Option<&Box<ComponentTreeNode>>) -> ComponentTreeNode {
     unsafe {
+
+        let mut component_tree = ComponentTreeNode {
+            key: None,
+            tag: "root".to_string(),
+            children: vec![],
+            id: 0
+        };
+
+        println!("-----------------------------------");
+        let old_component_tree_as_ptr = old_component_tree.map(|old_root| old_root.as_ref() as *const ComponentTreeNode as *mut ComponentTreeNode);
+
+        if let Some(comp) = old_component_tree_as_ptr {
+            println!("Old component tree is Some");
+            (*comp).print_tree();
+        } else {
+            println!("Old component tree is None");
+        }
+        
         let component_root: *mut ComponentTreeNode = &mut component_tree as *mut ComponentTreeNode;
         // A component can output only 1 subtree, but the subtree may have an unknown amount of variants.
         // The subtree variant is determined by the state, much like a function. f(s) = ... where f(s) = Subtree produced and s = State
@@ -312,12 +322,18 @@ fn construct_render_tree_from_user_tree(component_definition: ComponentDefinitio
         // 1. Determine if the currently visited child is an element or a component.
         // 2. If the child is an element: Add the children of the element to the list of elements to visit.
         // 3. If the child is a component: Produce the subtree with the inputted state and add the parent of the subtree to the to visit list.
-
+        
+        let root_spec = ComponentDefinition {
+            component: ComponentOrElement::Element(root.clone()),
+            key: None,
+            props: None,
+            children: vec![component_definition],
+        };
         let mut to_visit: Vec<TreeVisitorNode> = vec![TreeVisitorNode {
-            component_specification: Rc::new(RefCell::new(component_definition.clone())),
+            component_specification: Rc::new(RefCell::new(root_spec)),
             parent: root.as_mut(),
             parent_component_node: component_root,
-            old_node: old_root_as_ptr,
+            old_component_node: old_component_tree_as_ptr,
         }];
 
         while let Some(tree_node) = to_visit.pop() {
@@ -325,7 +341,7 @@ fn construct_render_tree_from_user_tree(component_definition: ComponentDefinitio
             let children = tree_node.component_specification.borrow().children.clone();
             let props = tree_node.component_specification.borrow().props.clone();
 
-            let has_previous_node = tree_node.old_node.is_some();
+            let has_previous_node = tree_node.old_component_node.is_some();
 
             match &mut tree_node.component_specification.borrow_mut().component {
                 ComponentOrElement::Element(element) => {
@@ -336,20 +352,26 @@ fn construct_render_tree_from_user_tree(component_definition: ComponentDefinitio
 
                     let mut olds: Vec<*mut ComponentTreeNode> = vec![];
                     if has_previous_node {
-                        for child in (*tree_node.old_node.unwrap()).children.iter_mut().rev() {
+                        for child in (*tree_node.old_component_node.unwrap()).children.iter_mut().rev() {
                             olds.push(child as *mut ComponentTreeNode);
                         }
                     }
 
                     let mut news: Vec<TreeVisitorNode> = vec![];
+                    let mut component_index: i64 = -1;
                     for (index, child) in children.into_iter().enumerate() {
-                        let old_node = olds.get(index).copied();
+                        let old_node = if matches!(child.component, ComponentOrElement::ComponentSpec(_, _)) {
+                            component_index += 1;
+                            olds.get(component_index as usize).copied()
+                        } else {
+                            None
+                        };
 
                         news.push(TreeVisitorNode {
                             component_specification: Rc::new(RefCell::new(child)),
                             parent: element_ptr,
                             parent_component_node: tree_node.parent_component_node,
-                            old_node,
+                            old_component_node: old_node,
                         });
                     }
                     to_visit.extend(news.into_iter().rev());
@@ -358,13 +380,13 @@ fn construct_render_tree_from_user_tree(component_definition: ComponentDefinitio
 
                     // Find the old root node if it exists and use its id if the tag matches the current tag.
                     let old_node_tag: Option<String> = if has_previous_node {
-                        Some((*tree_node.old_node.unwrap()).tag.clone())
+                        Some((*tree_node.old_component_node.unwrap()).tag.clone())
                     } else {
                         None
                     };
                     println!("Diffing: Old: {:?}, New: {}", old_node_tag, *component_tag);
                     let id: u64 = if old_node_tag.is_some() && *component_tag == old_node_tag.unwrap() {
-                        (*tree_node.old_node.unwrap()).id
+                        (*tree_node.old_component_node.unwrap()).id
                     } else {
                         create_unique_widget_id()
                     };
@@ -384,7 +406,7 @@ fn construct_render_tree_from_user_tree(component_definition: ComponentDefinitio
                         component_specification: next_component_spec,
                         parent: tree_node.parent,
                         parent_component_node: new_component_pointer,
-                        old_node: old_root_as_ptr,
+                        old_component_node: tree_node.old_component_node,
                     });
                 }
             };
