@@ -1,7 +1,7 @@
 use oku::components::component::Component;
 use oku::elements::container::Container;
 use oku::elements::text::Text;
-use oku_core::components::component::{ComponentOrElement, ComponentSpecification};
+use oku_core::components::component::{ComponentOrElement, ComponentDefinition};
 use oku_core::elements::element::Element;
 use oku_core::elements::style::{AlignItems, FlexDirection, JustifyContent, Unit};
 use oku_core::events::EventResult;
@@ -16,10 +16,10 @@ use oku_core::components::props::Props;
 
 struct Test1 {}
 
-pub fn app(_props: Option<Props>, children: Vec<ComponentSpecification>, id: u64) -> ComponentSpecification {
+pub fn app(_props: Option<Props>, children: Vec<ComponentDefinition>, id: u64) -> ComponentDefinition {
     //println!("-> app");
     println!("app id: {}", id);
-    ComponentSpecification {
+    ComponentDefinition {
         component: Container::new()
             .background(Color::new_from_rgba_u8(0, 255, 0, 255))
             .width(Unit::Px(50.0))
@@ -31,32 +31,32 @@ pub fn app(_props: Option<Props>, children: Vec<ComponentSpecification>, id: u64
     }
 }
 
-fn foo(_props: Option<Props>, children: Vec<ComponentSpecification>, id: u64) -> ComponentSpecification {
+fn foo(_props: Option<Props>, children: Vec<ComponentDefinition>, id: u64) -> ComponentDefinition {
     //println!("-> foo");
     println!("foo id: {}", id);
     let background = Container::new()
         .background(Color::new_from_rgba_u8(255, 0, 0, 255))
         .width(Unit::Px(200.0))
         .height(Unit::Px(200.0));
-
-    ComponentSpecification {
+    
+    ComponentDefinition {
         component: background.into(),
         key: None,
         props: None,
         children: vec![
-            ComponentSpecification {
+            ComponentDefinition {
                 component: Text::new("Hello, world 1!").into(),
                 key: None,
                 props: None,
                 children: vec![],
             },
-            ComponentSpecification {
+            ComponentDefinition {
                 component: ComponentOrElement::ComponentSpec(app),
                 key: None,
                 props: None,
                 children: vec![],
             },
-            ComponentSpecification {
+            ComponentDefinition {
                 component: Text::new("Hello, world 2!").into(),
                 key: None,
                 props: None,
@@ -67,9 +67,9 @@ fn foo(_props: Option<Props>, children: Vec<ComponentSpecification>, id: u64) ->
 }
 
 impl Component for Test1 {
-    fn view(_props: Option<&Props>, key: Option<String>) -> ComponentSpecification {
+    fn view(_props: Option<&Props>, key: Option<String>) -> ComponentDefinition {
         //println!("-> Test1");\
-        ComponentSpecification {
+        ComponentDefinition {
             component: ComponentOrElement::ComponentSpec(foo),
             key,
             props: None,

@@ -26,7 +26,7 @@ use winit::event::{DeviceId, ElementState, KeyEvent, MouseButton, StartCause, Wi
 use winit::event_loop::{ActiveEventLoop, ControlFlow, EventLoop};
 use winit::keyboard::{Key, NamedKey};
 use winit::window::{Window, WindowId};
-use crate::components::component::{ComponentOrElement, ComponentSpecification};
+use crate::components::component::{ComponentOrElement, ComponentDefinition};
 use crate::elements::component::{Component, default_update};
 
 use crate::elements::container::Container;
@@ -40,7 +40,7 @@ use crate::renderer::wgpu::WgpuRenderer;
 const WAIT_TIME: time::Duration = time::Duration::from_millis(100);
 
 struct App {
-    app: ComponentSpecification,
+    app: ComponentDefinition,
     window: Option<Arc<Window>>,
     renderer: Option<Box<dyn Renderer + Send>>,
     renderer_context: Option<RenderContext>,
@@ -102,11 +102,11 @@ pub enum RendererType {
     Wgpu,
 }
 
-pub fn oku_main(application: ComponentSpecification) {
+pub fn oku_main(application: ComponentDefinition) {
     oku_main_with_options(application, None)
 }
 
-pub fn oku_main_with_options(application: ComponentSpecification, options: Option<OkuOptions>) {
+pub fn oku_main_with_options(application: ComponentDefinition, options: Option<OkuOptions>) {
     let rt = tokio::runtime::Builder::new_multi_thread().enable_all().build().expect("Failed to create runtime");
 
     let event_loop = EventLoop::new().expect("Failed to create winit event loop");
@@ -257,16 +257,16 @@ struct UnsafeElement {
 
 #[derive(Clone)]
 struct TreeVisitorNode {
-    component_specification: Rc<RefCell<ComponentSpecification>>,
+    component_specification: Rc<RefCell<ComponentDefinition>>,
     parent: *mut dyn Element,
     old_node: Option<*mut dyn Element>,
     parent_tag: String,
 }
 
-// This function constructs the element tree from the component specification.
+// This function constructs the render tree from the component specification.
 // The function is safe despite using multiple shared mutable references, because the references are only used to traverse the tree.
-fn construct_element_tree_from_component_specification(
-    component_specification: ComponentSpecification,
+fn construct_render_tree_from_user_tree(
+    component_definition: ComponentDefinition,
     root: &mut Box<dyn Element>,
     old_root: Option<&Box<dyn Element>>
 ) {
@@ -283,7 +283,7 @@ fn construct_element_tree_from_component_specification(
     let mut to_visit: Vec<TreeVisitorNode> =
         vec![
             TreeVisitorNode {
-                component_specification: Rc::new(RefCell::new(component_specification.clone())),
+                component_specification: Rc::new(RefCell::new(component_definition.clone())),
                 parent: root.as_mut(),
                 old_node: old_root_as_ptr,
                 parent_tag: String::from("root")
@@ -370,7 +370,7 @@ fn construct_element_tree_from_component_specification(
     }
 }
 
-async fn async_main(application: ComponentSpecification, mut rx: mpsc::Receiver<(u64, bool, InternalMessage)>, tx: mpsc::Sender<(u64, InternalMessage)>) {
+async fn async_main(application: ComponentDefinition, mut rx: mpsc::Receiver<(u64, bool, InternalMessage)>, tx: mpsc::Sender<(u64, InternalMessage)>) {
     let mut app = Box::new(App {
         app: application,
         window: None,
@@ -393,7 +393,7 @@ async fn async_main(application: ComponentSpecification, mut rx: mpsc::Receiver<
 
 
                     let old_root = app.element_tree.as_ref();
-                    construct_element_tree_from_component_specification(app.app.clone(), &mut window_element, old_root);
+                    construct_render_tree_from_user_tree(app.app.clone(), &mut window_element, old_root);
 
                     let mut root = window_element;
 
