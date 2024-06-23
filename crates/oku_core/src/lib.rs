@@ -26,8 +26,7 @@ use winit::event::{DeviceId, ElementState, KeyEvent, MouseButton, StartCause, Wi
 use winit::event_loop::{ActiveEventLoop, ControlFlow, EventLoop};
 use winit::keyboard::{Key, NamedKey};
 use winit::window::{Window, WindowId};
-use crate::components::component::{ComponentOrElement, ComponentDefinition};
-use crate::elements::component::{Component, default_update};
+use crate::components::component::{ComponentDefinition, ComponentOrElement, ViewFn};
 
 use crate::elements::container::Container;
 use crate::elements::layout_context::{measure_content, LayoutContext};
@@ -104,6 +103,12 @@ pub enum RendererType {
 
 pub fn oku_main(application: ComponentDefinition) {
     oku_main_with_options(application, None)
+}
+
+struct ComponentTreeNode {
+    key: Option<String>,
+    tag: String,
+    children: Vec<ComponentTreeNode>,
 }
 
 pub fn oku_main_with_options(application: ComponentDefinition, options: Option<OkuOptions>) {
@@ -259,6 +264,7 @@ struct UnsafeElement {
 struct TreeVisitorNode {
     component_specification: Rc<RefCell<ComponentDefinition>>,
     parent: *mut dyn Element,
+    parent_component_node: *mut ComponentTreeNode,
     old_node: Option<*mut dyn Element>,
     parent_tag: String,
 }
@@ -270,21 +276,30 @@ fn construct_render_tree_from_user_tree(
     root: &mut Box<dyn Element>,
     old_root: Option<&Box<dyn Element>>
 ) {
-
+    let mut component_tree = ComponentTreeNode {
+        key: None,
+        tag: "root".to_string(),
+        children: vec![],
+    };
+    
     let old_root_as_ptr = old_root.map(|old_root| old_root.as_ref() as *const dyn Element as *mut dyn Element);
 
     unsafe {
-    // A component can output only 1 subtree, but the subtree may have an unknown amount of variants.
-    // The subtree variant is determined by the state, much like a function. f(s) = ... where f(s) = Subtree produced and s = State
-    // The algorithm is as follows:
-    // 1. Determine if the currently visited child is an element or a component.
-    // 2. If the child is an element: Add the children of the element to the list of elements to visit.
-    // 3. If the child is a component: Produce the subtree with the inputted state and add the parent of the subtree to the to visit list.
-    let mut to_visit: Vec<TreeVisitorNode> =
+
+        let component_root: *mut ComponentTreeNode = &mut component_tree as *mut ComponentTreeNode;
+        // A component can output only 1 subtree, but the subtree may have an unknown amount of variants.
+        // The subtree variant is determined by the state, much like a function. f(s) = ... where f(s) = Subtree produced and s = State
+        // The algorithm is as follows:
+        // 1. Determine if the currently visited child is an element or a component.
+        // 2. If the child is an element: Add the children of the element to the list of elements to visit.
+        // 3. If the child is a component: Produce the subtree with the inputted state and add the parent of the subtree to the to visit list.
+    
+        let mut to_visit: Vec<TreeVisitorNode> =
         vec![
             TreeVisitorNode {
                 component_specification: Rc::new(RefCell::new(component_definition.clone())),
                 parent: root.as_mut(),
+                parent_component_node: component_root,
                 old_node: old_root_as_ptr,
                 parent_tag: String::from("root")
             }
@@ -292,7 +307,8 @@ fn construct_render_tree_from_user_tree(
    /* let mut old_root_to_visit: Vec<*mut dyn Element> = vec![];*/
 
     while let Some(tree_node) = to_visit.pop() {
-
+    
+        let key = tree_node.component_specification.borrow().key.clone();
         let children = tree_node.component_specification.borrow().children.clone();
         let props = tree_node.component_specification.borrow().props.clone();
 
@@ -338,6 +354,7 @@ fn construct_render_tree_from_user_tree(
                         TreeVisitorNode {
                             component_specification: Rc::new(RefCell::new(child)),
                             parent: element_ptr,
+                            parent_component_node: tree_node.parent_component_node,
                             old_node,
                             parent_tag: stateless_element_tag.clone()
                         }
@@ -346,20 +363,30 @@ fn construct_render_tree_from_user_tree(
                 to_visit.extend(news.into_iter().rev());
             },
             ComponentOrElement::ComponentSpec(component_spec) => {
-
                 let component_tag = type_name_of_val(component_spec).to_string();
 
-                let id: u64;
-                if has_previous_node && old_root.unwrap().tag().is_some() && component_tag == old_root.unwrap().tag().unwrap() {
-                    id = old_root.unwrap().id();
+
+                //(*tree_node.parent_component_node).tag = component_tag.clone();
+                let new_component_node = ComponentTreeNode {
+                    key,
+                    tag: component_tag.clone(),
+                    children: vec![],
+                };
+                
+                tree_node.parent_component_node.as_mut().unwrap().children.push(new_component_node);
+                let new_component_pointer: *mut ComponentTreeNode = (*tree_node.parent_component_node).children.last_mut().unwrap();
+                
+                let id: u64 = if has_previous_node && old_root.unwrap().tag().is_some() && component_tag == old_root.unwrap().tag().unwrap() {
+                    old_root.unwrap().id()
                 } else {
-                    id = create_unique_widget_id();
-                }
+                    create_unique_widget_id()
+                };
 
                 let next_component_spec = Rc::new(RefCell::new(component_spec(props, children, id)));
                 to_visit.push(TreeVisitorNode {
                     component_specification: next_component_spec,
                     parent: tree_node.parent,
+                    parent_component_node: new_component_pointer,
                     old_node: old_root_as_ptr,
                     parent_tag: component_tag.clone()
                 });

@@ -4,11 +4,11 @@ use crate::components::props::Props;
 use crate::elements::element::Element;
 use crate::reactive::reactive::RUNTIME;
 
-type view_fn = fn (props: Option<Props>, children: Vec<ComponentDefinition>, id: u64) -> ComponentDefinition;
+pub type ViewFn = fn (props: Option<Props>, children: Vec<ComponentDefinition>, id: u64) -> ComponentDefinition;
 
 #[derive(Clone)]
 pub enum ComponentOrElement {
-    ComponentSpec(view_fn),
+    ComponentSpec(ViewFn),
     Element(Box<dyn Element>),
 }
 
