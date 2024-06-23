@@ -77,7 +77,7 @@ impl dyn Element {
             } else {
                 prefix.push_str("├─");
             }
-            println!("{}{}", prefix, element.name());
+            println!("{}{} ID: {} Tag: {}", prefix, element.name(), element.id(), element.tag().unwrap_or("None".to_string()));
             let children = element.children();
             for (i, child) in children.iter().enumerate() {
                 let is_last = i == children.len() - 1;

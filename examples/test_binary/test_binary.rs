@@ -18,6 +18,7 @@ struct Test1 {}
 
 pub fn app(_props: Option<Props>, children: Vec<ComponentSpecification>, id: u64) -> ComponentSpecification {
     //println!("-> app");
+    println!("app id: {}", id);
     ComponentSpecification {
         component: Container::new()
             .background(Color::new_from_rgba_u8(0, 255, 0, 255))
@@ -32,6 +33,7 @@ pub fn app(_props: Option<Props>, children: Vec<ComponentSpecification>, id: u64
 
 fn foo(_props: Option<Props>, children: Vec<ComponentSpecification>, id: u64) -> ComponentSpecification {
     //println!("-> foo");
+    println!("foo id: {}", id);
     let background = Container::new()
         .background(Color::new_from_rgba_u8(255, 0, 0, 255))
         .width(Unit::Px(200.0))
@@ -66,7 +68,7 @@ fn foo(_props: Option<Props>, children: Vec<ComponentSpecification>, id: u64) ->
 
 impl Component for Test1 {
     fn view(_props: Option<&Props>, key: Option<String>) -> ComponentSpecification {
-        //println!("-> Test1");
+        //println!("-> Test1");\
         ComponentSpecification {
             component: ComponentOrElement::ComponentSpec(foo),
             key,
