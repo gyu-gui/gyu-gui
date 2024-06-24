@@ -285,7 +285,7 @@ impl ComponentTreeNode {
                 }
                 println!("{} , Tag: {}, Id: {}", prefix, (*element).tag, (*element).id);
                 let children = &(*element).children;
-                for (i, child) in children.iter().enumerate() {
+                for (i, child) in children.iter().enumerate().rev() {
                     let is_last = i == children.len() - 1;
                     elements.push((child, indent + 1, is_last));
                 }
@@ -353,7 +353,7 @@ fn construct_render_tree_from_user_tree(component_definition: ComponentDefinitio
 
                     let mut olds: Vec<*mut ComponentTreeNode> = vec![];
                     if has_previous_node {
-                        for child in (*tree_node.old_component_node.unwrap()).children.iter_mut().rev() {
+                        for child in (*tree_node.old_component_node.unwrap()).children.iter_mut() {
                             olds.push(child as *mut ComponentTreeNode);
                         }
                     }

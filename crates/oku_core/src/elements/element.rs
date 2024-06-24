@@ -69,7 +69,7 @@ impl dyn Element {
             }
             println!("{}{}", prefix, element.name());
             let children = element.children();
-            for (i, child) in children.iter().enumerate() {
+            for (i, child) in children.iter().enumerate().rev() {
                 let is_last = i == children.len() - 1;
                 elements.push((child.clone(), indent + 1, is_last));
             }

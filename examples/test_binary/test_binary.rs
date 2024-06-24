@@ -16,6 +16,50 @@ use oku_core::components::props::Props;
 
 struct Test1 {}
 
+pub fn something(_props: Option<Props>, children: Vec<ComponentDefinition>, id: u64) -> ComponentDefinition {
+    //println!("-> app");
+    println!("something id: {}", id);
+    ComponentDefinition {
+        component: Container::new()
+            .background(Color::new_from_rgba_u8(0, 155, 25, 255))
+            .width(Unit::Px(20.0))
+            .height(Unit::Px(20.0))
+            .into(),
+        key: Some("Something".to_string()),
+        props: None,
+        children: vec![
+            ComponentDefinition {
+                component: Text::new("Hi2").into(),
+                key: None,
+                props: None,
+                children: vec![],
+            },
+        ],
+    }
+}
+
+pub fn twwwww(_props: Option<Props>, children: Vec<ComponentDefinition>, id: u64) -> ComponentDefinition {
+    //println!("-> app");
+    println!("twwwww id: {}", id);
+    ComponentDefinition {
+        component: Container::new()
+            .background(Color::new_from_rgba_u8(0, 155, 25, 255))
+            .width(Unit::Px(20.0))
+            .height(Unit::Px(20.0))
+            .into(),
+        key: Some("twwwww".to_string()),
+        props: None,
+        children: vec![
+            ComponentDefinition {
+                component: Text::new("Hi3").into(),
+                key: None,
+                props: None,
+                children: vec![],
+            },
+        ],
+    }
+}
+
 pub fn app(_props: Option<Props>, children: Vec<ComponentDefinition>, id: u64) -> ComponentDefinition {
     //println!("-> app");
     println!("app id: {}", id);
@@ -27,7 +71,14 @@ pub fn app(_props: Option<Props>, children: Vec<ComponentDefinition>, id: u64) -
             .into(),
         key: Some("App".to_string()),
         props: None,
-        children: vec![],
+        children: vec![
+            ComponentDefinition {
+                component: ComponentOrElement::ComponentSpec(something, "something".to_string()),
+                key: None,
+                props: None,
+                children: vec![],
+            },
+        ],
     }
 }
 
@@ -58,6 +109,12 @@ fn foo(_props: Option<Props>, children: Vec<ComponentDefinition>, id: u64) -> Co
                 props: None,
                 children: vec![],
             },
+           ComponentDefinition {
+               component: ComponentOrElement::ComponentSpec(twwwww, "twwwww".to_string()),
+               key: None,
+               props: None,
+               children: vec![],
+           },
             ComponentDefinition {
                 component: Text::new("Hello, world 2!").into(),
                 key: None,
