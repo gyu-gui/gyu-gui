@@ -10,7 +10,7 @@ pub mod reactive;
 #[cfg(test)]
 mod tests;
 
-use crate::components::component::{ComponentDefinition, ComponentOrElement, ViewFn};
+use crate::components::component::{ComponentSpecification, ComponentOrElement, ViewFn};
 use cosmic_text::{FontSystem, SwashCache};
 use slotmap::{DefaultKey, SlotMap};
 use std::any::type_name_of_val;
@@ -40,7 +40,7 @@ use crate::renderer::wgpu::WgpuRenderer;
 const WAIT_TIME: time::Duration = time::Duration::from_millis(100);
 
 struct App {
-    app: ComponentDefinition,
+    app: ComponentSpecification,
     window: Option<Arc<Window>>,
     renderer: Option<Box<dyn Renderer + Send>>,
     renderer_context: Option<RenderContext>,
@@ -101,7 +101,7 @@ pub enum RendererType {
     Wgpu,
 }
 
-pub fn oku_main(application: ComponentDefinition) {
+pub fn oku_main(application: ComponentSpecification) {
     oku_main_with_options(application, None)
 }
 
@@ -112,7 +112,7 @@ struct ComponentTreeNode {
     id: u64
 }
 
-pub fn oku_main_with_options(application: ComponentDefinition, options: Option<OkuOptions>) {
+pub fn oku_main_with_options(application: ComponentSpecification, options: Option<OkuOptions>) {
     let rt = tokio::runtime::Builder::new_multi_thread().enable_all().build().expect("Failed to create runtime");
 
     let event_loop = EventLoop::new().expect("Failed to create winit event loop");
@@ -263,7 +263,7 @@ struct UnsafeElement {
 
 #[derive(Clone)]
 struct TreeVisitorNode {
-    component_specification: Rc<RefCell<ComponentDefinition>>,
+    component_specification: Rc<RefCell<ComponentSpecification>>,
     parent: *mut dyn Element,
     parent_component_node: *mut ComponentTreeNode,
     old_component_node: Option<*mut ComponentTreeNode>,
@@ -296,7 +296,7 @@ impl ComponentTreeNode {
 
 // This function constructs the render tree from the component specification.
 // The function is safe despite using multiple shared mutable references, because the references are only used to traverse the tree.
-fn construct_render_tree_from_user_tree(component_definition: ComponentDefinition, root: &mut Box<dyn Element>, old_component_tree: Option<&Box<ComponentTreeNode>>) -> ComponentTreeNode {
+fn construct_render_tree_from_user_tree(component_specification: ComponentSpecification, root: &mut Box<dyn Element>, old_component_tree: Option<&Box<ComponentTreeNode>>) -> ComponentTreeNode {
     unsafe {
 
         let mut component_tree = ComponentTreeNode {
@@ -324,11 +324,11 @@ fn construct_render_tree_from_user_tree(component_definition: ComponentDefinitio
         // 2. If the child is an element: Add the children of the element to the list of elements to visit.
         // 3. If the child is a component: Produce the subtree with the inputted state and add the parent of the subtree to the to visit list.
         
-        let root_spec = ComponentDefinition {
+        let root_spec = ComponentSpecification {
             component: ComponentOrElement::Element(root.clone()),
             key: None,
             props: None,
-            children: vec![component_definition],
+            children: vec![component_specification],
         };
         let mut to_visit: Vec<TreeVisitorNode> = vec![TreeVisitorNode {
             component_specification: Rc::new(RefCell::new(root_spec)),
@@ -418,7 +418,7 @@ fn construct_render_tree_from_user_tree(component_definition: ComponentDefinitio
     }
 }
 
-async fn async_main(application: ComponentDefinition, mut rx: mpsc::Receiver<(u64, bool, InternalMessage)>, tx: mpsc::Sender<(u64, InternalMessage)>) {
+async fn async_main(application: ComponentSpecification, mut rx: mpsc::Receiver<(u64, bool, InternalMessage)>, tx: mpsc::Sender<(u64, InternalMessage)>) {
     let mut app = Box::new(App {
         app: application,
         window: None,

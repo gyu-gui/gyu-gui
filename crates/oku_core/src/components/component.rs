@@ -4,7 +4,7 @@ use crate::components::props::Props;
 use crate::elements::element::Element;
 use crate::reactive::reactive::RUNTIME;
 
-pub type ViewFn = fn (props: Option<Props>, children: Vec<ComponentDefinition>, id: u64) -> ComponentDefinition;
+pub type ViewFn = fn (props: Option<Props>, children: Vec<ComponentSpecification>, id: u64) -> ComponentSpecification;
 
 #[derive(Clone)]
 pub enum ComponentOrElement {
@@ -13,18 +13,18 @@ pub enum ComponentOrElement {
 }
 
 #[derive(Clone)]
-pub struct ComponentDefinition {
+pub struct ComponentSpecification {
     pub component: ComponentOrElement,
     pub key: Option<String>,
     pub props: Option<Props>,
-    pub children: Vec<ComponentDefinition>
+    pub children: Vec<ComponentSpecification>
 }
 
 pub trait Component<State = (), Message = ()>
 where
     State: Clone + Send + Sized + 'static,
 {
-    fn view(props: Option<&Props>, key: Option<String>) -> ComponentDefinition;
+    fn view(props: Option<&Props>, key: Option<String>) -> ComponentSpecification;
 
     fn get_state(&self) -> Option<State> {
         RUNTIME.get_state(0)
