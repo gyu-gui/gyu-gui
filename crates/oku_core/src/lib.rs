@@ -10,7 +10,7 @@ pub mod reactive;
 #[cfg(test)]
 mod tests;
 
-use crate::components::component::{ComponentOrElement, ComponentSpecification};
+use crate::components::component::{ComponentOrElement, ComponentSpecification, UpdateFn};
 use cosmic_text::{FontSystem, SwashCache};
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -106,6 +106,7 @@ pub fn oku_main(application: ComponentSpecification) {
 struct ComponentTreeNode {
     key: Option<String>,
     tag: String,
+    update: Option<UpdateFn>,
     children: Vec<ComponentTreeNode>,
     id: u64,
 }
@@ -296,6 +297,7 @@ pub(crate) fn create_trees_from_render_specification(component_specification: Co
         let mut component_tree = ComponentTreeNode {
             key: None,
             tag: "root".to_string(),
+            update: None,
             children: vec![],
             id: 0,
         };
@@ -372,6 +374,7 @@ pub(crate) fn create_trees_from_render_specification(component_specification: Co
                     let new_component_node = ComponentTreeNode {
                         key,
                         tag: component_tag.clone(),
+                        update: None,
                         children: vec![],
                         id,
                     };
@@ -379,7 +382,9 @@ pub(crate) fn create_trees_from_render_specification(component_specification: Co
                     tree_node.parent_component_node.as_mut().unwrap().children.push(new_component_node);
                     let new_component_pointer: *mut ComponentTreeNode = (*tree_node.parent_component_node).children.last_mut().unwrap();
 
-                    let next_component_spec = Rc::new(RefCell::new(component_spec(props, children, id)));
+                    let new_component = component_spec(props, children, id);
+                    (*new_component_pointer).update = Some(new_component.1);
+                    let next_component_spec = Rc::new(RefCell::new(new_component.0));
                     to_visit.push(TreeVisitorNode {
                         component_specification: next_component_spec,
                         parent: tree_node.parent,
