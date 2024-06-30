@@ -16,6 +16,7 @@ pub struct Empty {
     children: Vec<Box<dyn Element>>,
     style: Style,
     computed_style: Style,
+    id: Option<String>,
 }
 
 impl Empty {
@@ -24,6 +25,7 @@ impl Empty {
             children: vec![],
             style: Default::default(),
             computed_style: Default::default(),
+            id: None,
         }
     }
 }
@@ -79,4 +81,11 @@ impl Element for Empty {
         todo!()
     }
 
+    fn id(&self) -> &Option<String> {
+        &self.id
+    }
+
+    fn set_id(&mut self, id: Option<String>) {
+        self.id = id;
+    }
 }

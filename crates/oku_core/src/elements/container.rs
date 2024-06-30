@@ -21,6 +21,7 @@ pub struct Container {
     computed_width: f32,
     computed_height: f32,
     computed_padding: [f32; 4],
+    id: Option<String>,
 }
 
 impl Container {
@@ -35,6 +36,7 @@ impl Container {
             computed_width: 0.0,
             computed_height: 0.0,
             computed_padding: [0.0, 0.0, 0.0, 0.0],
+            id: None,
         }
     }
 }
@@ -123,6 +125,14 @@ impl Element for Container {
 
     fn add_update_handler(&mut self, update: Arc<fn(Message, Box<dyn Any>, id: u64)>) {
         todo!()
+    }
+
+    fn id(&self) -> &Option<String> {
+        &self.id
+    }
+
+    fn set_id(&mut self, id: Option<String>) {
+        self.id = id;
     }
 }
 

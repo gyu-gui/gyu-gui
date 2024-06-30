@@ -18,7 +18,6 @@ use std::sync::Arc;
 struct Test1 {}
 
 pub fn something(_props: Option<Props>, children: Vec<ComponentSpecification>, id: u64) -> ComponentSpecification {
-    println!("something id: {}", id);
     ComponentSpecification {
         component: Container::new().background(Color::new_from_rgba_u8(0, 155, 25, 255)).width(Unit::Px(20.0)).height(Unit::Px(20.0)).into(),
         key: Some("Something".to_string()),
@@ -87,7 +86,6 @@ fn foo(_props: Option<Props>, children: Vec<ComponentSpecification>, id: u64) ->
 
 impl Component for Test1 {
     fn view(_props: Option<&Props>, key: Option<String>) -> ComponentSpecification {
-        //println!("-> Test1");\
         ComponentSpecification {
             component: component!(foo),
             key,
