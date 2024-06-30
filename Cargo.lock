@@ -20,9 +20,9 @@ checksum = "c71b1793ee61086797f5c80b6efa2b8ffa6d5dd703f118545808a7f2e27f7046"
 
 [[package]]
 name = "accesskit"
-version = "0.15.0"
+version = "0.16.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0ac5b518d65f20dc920b3a7bb92bb2b90cdb301416f27c2a55a128cd99f75c0c"
+checksum = "e4700bdc115b306d6c43381c344dc307f03b7f0460c304e4892c309930322bd7"
 
 [[package]]
 name = "addr2line"
@@ -255,9 +255,9 @@ checksum = "79296716171880943b8470b5f8d03aa55eb2e645a4874bdbb28adb49162e012c"
 
 [[package]]
 name = "bytemuck"
-version = "1.16.0"
+version = "1.16.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "78834c15cb5d5efe3452d58b1e8ba890dd62d21907f867f383358198e56ebca5"
+checksum = "b236fc92302c97ed75b38da1f4917b5cdda4984745740f153a5d3059e48d725e"
 dependencies = [
  "bytemuck_derive",
 ]
@@ -587,7 +587,7 @@ checksum = "75b325c5dbd37f80359721ad39aca5a29fb04c89279657cffdda8736d0c0b9d2"
 [[package]]
 name = "dpi"
 version = "0.1.1"
-source = "git+https://github.com/rust-windowing/winit?rev=3e6092b8edf8dfddef3a777b922be1b9ae6a824c#3e6092b8edf8dfddef3a777b922be1b9ae6a824c"
+source = "git+https://github.com/rust-windowing/winit?rev=75ce71f05ad6b2fa73c2c529a1d2c8896aea3f0e#75ce71f05ad6b2fa73c2c529a1d2c8896aea3f0e"
 
 [[package]]
 name = "drm"
@@ -1073,9 +1073,9 @@ dependencies = [
 
 [[package]]
 name = "log"
-version = "0.4.21"
+version = "0.4.22"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "90ed8c1e510134f979dbc4f070f87d4313098b704861a105fe34231c70a3901c"
+checksum = "a7a70ba024b9dc04c27ea2f0c0548feb474ec5c54bba33a7f72f873a39d07b24"
 
 [[package]]
 name = "malloc_buf"
@@ -2008,8 +2008,8 @@ dependencies = [
 
 [[package]]
 name = "softbuffer"
-version = "0.4.4"
-source = "git+https://github.com/rust-windowing/softbuffer?rev=d80ef86fa7aa832298f3d85f0243ace3e3f9d7a3#d80ef86fa7aa832298f3d85f0243ace3e3f9d7a3"
+version = "0.4.5"
+source = "git+https://github.com/rust-windowing/softbuffer?rev=7c4af4b436163b2d5094c2be2f48f32ea4fee0d5#7c4af4b436163b2d5094c2be2f48f32ea4fee0d5"
 dependencies = [
  "as-raw-xcb-connection",
  "bytemuck",
@@ -2104,7 +2104,7 @@ dependencies = [
 [[package]]
 name = "taffy"
 version = "0.5.1"
-source = "git+https://github.com/DioxusLabs/taffy?rev=e363fc8065ce370dba9fcacd1bd6575e65657c74#e363fc8065ce370dba9fcacd1bd6575e65657c74"
+source = "git+https://github.com/DioxusLabs/taffy?rev=cd73db35cfa2b31555a796e7972cd97a45554e17#cd73db35cfa2b31555a796e7972cd97a45554e17"
 dependencies = [
  "arrayvec",
  "grid",
@@ -2941,8 +2941,8 @@ checksum = "bec47e5bfd1bff0eeaf6d8b485cc1074891a197ab4225d504cb7a1ab88b02bf0"
 
 [[package]]
 name = "winit"
-version = "0.30.2"
-source = "git+https://github.com/rust-windowing/winit?rev=3e6092b8edf8dfddef3a777b922be1b9ae6a824c#3e6092b8edf8dfddef3a777b922be1b9ae6a824c"
+version = "0.30.3"
+source = "git+https://github.com/rust-windowing/winit?rev=75ce71f05ad6b2fa73c2c529a1d2c8896aea3f0e#75ce71f05ad6b2fa73c2c529a1d2c8896aea3f0e"
 dependencies = [
  "ahash",
  "android-activity",

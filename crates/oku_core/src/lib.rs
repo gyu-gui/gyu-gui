@@ -142,7 +142,7 @@ impl ApplicationHandler for OkuState {
         self.wait_cancelled = matches!(cause, StartCause::WaitCancelled { .. })
     }
 
-    fn resumed(&mut self, event_loop: &ActiveEventLoop) {
+    fn can_create_surfaces(&mut self, event_loop: &ActiveEventLoop) {
         let window_attributes = Window::default_attributes().with_title("oku");
         let window = Arc::new(event_loop.create_window(window_attributes).unwrap());
         self.window = Some(window.clone());
