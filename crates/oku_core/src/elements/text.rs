@@ -173,11 +173,11 @@ impl Element for Text {
         self.id = id;
     }
 
-    fn parent_id(&self) -> u64 {
+    fn parent_component_id(&self) -> u64 {
         self.parent_component_id
     }
 
-    fn set_parent_id(&mut self, id: u64) {
+    fn set_parent_component_id(&mut self, id: u64) {
         self.parent_component_id = id;
     }
 }

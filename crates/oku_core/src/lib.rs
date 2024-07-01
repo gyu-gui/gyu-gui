@@ -294,6 +294,7 @@ impl ComponentTreeNode {
 /// Creates a new Component tree and Element tree from a ComponentSpecification.
 /// The ids of the Component tree are stable across renders.
 pub(crate) fn create_trees_from_render_specification(component_specification: ComponentSpecification, mut root_element: Box<dyn Element>, old_component_tree: Option<&ComponentTreeNode>) -> (ComponentTreeNode, Box<dyn Element>) {
+    println!("-----------------------------------------");
     unsafe {
         let mut component_tree = ComponentTreeNode {
             key: None,
@@ -326,6 +327,11 @@ pub(crate) fn create_trees_from_render_specification(component_specification: Co
             parent_component_node: component_root,
             old_component_node: old_component_tree_as_ptr,
         }];
+        
+        if let Some(old_component_tree_as_ptr) = old_component_tree_as_ptr {
+            println!("old");
+            (*old_component_tree_as_ptr).print_tree();
+        }
 
         while let Some(tree_node) = to_visit.pop() {
             let key = tree_node.component_specification.borrow().key.clone();
@@ -338,15 +344,17 @@ pub(crate) fn create_trees_from_render_specification(component_specification: Co
                 ComponentOrElement::Element(element) => {
                     let mut element = element.clone();
 
-                    element.set_parent_id((*tree_node.parent_component_node).id);
+                    element.set_parent_component_id((*tree_node.parent_component_node).id);
                     let element_ptr = &mut *element as *mut dyn Element;
                     tree_node.parent.as_mut().unwrap().children_mut().push(element);
 
                     let mut olds: Vec<*const ComponentTreeNode> = vec![];
                     if has_previous_node {
                         for child in (*tree_node.old_component_node.unwrap()).children.iter() {
+                            println!("olds: {}", child.id);
                             olds.push(child as *const ComponentTreeNode);
                         }
+                        println!("<<<<<<<");
                     }
 
                     let mut news: Vec<TreeVisitorNode> = vec![];
@@ -370,9 +378,20 @@ pub(crate) fn create_trees_from_render_specification(component_specification: Co
                 }
                 ComponentOrElement::ComponentSpec(component_spec, component_tag, type_id) => {
                     // Find the old root node if it exists and use its id if the tag matches the current tag.
-                    let old_node_tag: Option<String> = if has_previous_node { Some((*tree_node.old_component_node.unwrap()).tag.clone()) } else { None };
-                    let id: u64 = if old_node_tag.is_some() && *component_tag == old_node_tag.unwrap() { (*tree_node.old_component_node.unwrap()).id } else { create_unique_widget_id() };
-
+                    let old_node_tag: Option<String> = if has_previous_node { 
+                        Some((*tree_node.old_component_node.unwrap()).tag.clone()) 
+                    } else { 
+                        None 
+                    };
+                    if has_previous_node {
+                        //println!("old tag: {}, id {} new tag: {}, {}", old_node_tag.as_ref().unwrap(), (*tree_node.old_component_node.unwrap()).id, component_tag, 9);
+                    }
+                    let id: u64 = if old_node_tag.is_some() && *component_tag == old_node_tag.unwrap() { 
+                        (*tree_node.old_component_node.unwrap()).id 
+                    } else {
+                        create_unique_widget_id() 
+                    };
+                    println!("Id: {}", id);
                     let new_component_node = ComponentTreeNode {
                         key,
                         tag: component_tag.clone(),
@@ -386,9 +405,9 @@ pub(crate) fn create_trees_from_render_specification(component_specification: Co
 
                     let new_component = component_spec(props, children, id);
                     (*new_component_pointer).update = new_component.1;
-                    if let Some(update_fn) = (*new_component_pointer).update {
+                   /* if let Some(update_fn) = (*new_component_pointer).update {
                         update_fn(0, Message::UserMessage(Box::new(& 4)));
-                    }
+                    }*/
                     let next_component_spec = Rc::new(RefCell::new(new_component.0));
                     to_visit.push(TreeVisitorNode {
                         component_specification: next_component_spec,
@@ -399,7 +418,10 @@ pub(crate) fn create_trees_from_render_specification(component_specification: Co
                 }
             };
         }
-        
+
+        component_tree.print_tree();
+        //root_element.print_tree();
+
         (component_tree, root_element)
     }
 }
@@ -423,7 +445,7 @@ async fn async_main(application: ComponentSpecification, mut rx: mpsc::Receiver<
 
                     renderer.surface_set_clear_color(Color::new_from_rgba_u8(255, 255, 255, 255));
 
-                    let window_element = Container::new().background(Color::new_from_rgba_u8(0, 0, 255, 255));
+                    let window_element = Container::new().background(Color::new_from_rgba_u8(255, 255, 255, 255));
                     let window_element: Box<dyn Element> = window_element.width(Unit::Px(renderer.surface_width())).into();
 
                     let old_component_tree = app.component_tree.as_ref();
@@ -504,8 +526,9 @@ async fn async_main(application: ComponentSpecification, mut rx: mpsc::Receiver<
                         if !in_bounds {
                             continue;
                         }
-                        
-                        let parent_component_id = element.parent_id();
+
+                        let parent_component_id = element.parent_component_id();
+                        println!("Parent Component Id: {}", parent_component_id);
                         let old_state = RUNTIME.get_state(parent_component_id).unwrap_or(0u32);
                         RUNTIME.set_state(parent_component_id, old_state + 1u32);
                         break;

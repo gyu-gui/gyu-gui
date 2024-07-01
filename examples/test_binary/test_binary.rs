@@ -14,23 +14,59 @@ use oku_core::RendererType::Wgpu;
 use oku_core::{component, OkuOptions};
 use std::any::Any;
 
-struct Test1 {}
-
-pub fn app(_props: Option<Props>, children: Vec<ComponentSpecification>, id: u64) -> (ComponentSpecification, Option<UpdateFn>) {
-    
+pub fn counter(_props: Option<Props>, children: Vec<ComponentSpecification>, id: u64) -> (ComponentSpecification, Option<UpdateFn>) {
     let count = RUNTIME.get_state(id).unwrap_or(0u32);
-    
-    (ComponentSpecification {
-        component: Container::new().background(Color::new_from_rgba_u8(0, 255, 0, 255)).width(Unit::Px(50.0)).height(Unit::Px(50.0)).into(),
-        key: Some("App".to_string()),
-        props: None,
-        children: vec![ComponentSpecification {
-            component: Text::new(format!("Count: {}", count).as_str()).into(),
+
+    (
+        ComponentSpecification {
+            component: Text::new(format!("Counter Count: {}", count).as_str()).into(),
             key: None,
             props: None,
             children: vec![],
-        }],
-    }, Some(update))
+        },
+        Some(update),
+    )
+}
+
+pub fn app(_props: Option<Props>, children: Vec<ComponentSpecification>, id: u64) -> (ComponentSpecification, Option<UpdateFn>) {
+
+    (
+        ComponentSpecification {
+            component: Container::new().background(Color::new_from_rgba_u8(240, 255, 220, 255)).width(Unit::Px(900.0)).height(Unit::Px(900.0)).flex_direction(FlexDirection::Column).into(),
+            key: None,
+            props: None,
+            children: vec![
+                ComponentSpecification {
+                    component: Container::new()
+                        .background(Color::new_from_rgba_u8(0, 255, 255, 255))
+                        .into(),
+                    key: None,
+                    props: None,
+                    children: vec![ComponentSpecification {
+                        component: component!(counter),
+                        key: None,
+                        props: None,
+                        children: vec![],
+                    }],
+                },
+                Text::new("Hello World!").into(),
+                ComponentSpecification {
+                    component: Container::new()
+                        .background(Color::new_from_rgba_u8(255, 0, 255, 255))
+                        .into(),
+                    key: None,
+                    props: None,
+                    children: vec![ComponentSpecification {
+                        component: component!(counter),
+                        key: None,
+                        props: None,
+                        children: vec![],
+                    }],
+                },
+            ],
+        },
+        Some(update),
+    )
 }
 
 pub fn update(id: u64, message: Message) {
@@ -40,7 +76,7 @@ pub fn update(id: u64, message: Message) {
 fn main() {
     oku_core::oku_main_with_options(
         ComponentSpecification {
-            component: ComponentOrElement::ComponentSpec(app, "".to_string(),  app.type_id()),
+            component: component!(app),
             key: None,
             props: None,
             children: vec![],
