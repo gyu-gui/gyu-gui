@@ -1,4 +1,5 @@
 use std::cell::RefCell;
+use std::collections::HashMap;
 use std::rc::Rc;
 use crate::components::component::{ComponentOrElement, ComponentSpecification, UpdateFn};
 use crate::elements::element::Element;
@@ -9,7 +10,7 @@ pub struct ComponentTreeNode {
     tag: String,
     update: Option<UpdateFn>,
     children: Vec<ComponentTreeNode>,
-    children_keys: Vec<String>,
+    children_keys: HashMap<String, u64>,
     id: u64,
 }
 
@@ -39,7 +40,7 @@ impl ComponentTreeNode {
                 } else {
                     prefix.push_str("├─");
                 }
-                println!("{} , Tag: {}, Id: {}", prefix, (*element).tag, (*element).id);
+                println!("{} , Tag: {}, Id: {}, Key: {:?}", prefix, (*element).tag, (*element).id, (*element).key);
                 let children = &(*element).children;
                 for (i, child) in children.iter().enumerate().rev() {
                     let is_last = i == children.len() - 1;
@@ -60,24 +61,19 @@ pub(crate) fn create_trees_from_render_specification(component_specification: Co
             tag: "root".to_string(),
             update: None,
             children: vec![],
-            children_keys: vec![],
+            children_keys: HashMap::new(),
             id: 0,
         };
 
         let mut old_component_tree_as_ptr = old_component_tree.map(|old_root| old_root as *const ComponentTreeNode);
 
+        // HACK: This is a workaround to get the first child of the old component tree because we start at the first level on the new tree.
+        // This is because the root of the component tree is not a component, but a dummy node.
         if old_component_tree_as_ptr.is_some() {
             old_component_tree_as_ptr = Some((*old_component_tree_as_ptr.unwrap()).children.get(0).unwrap() as *const ComponentTreeNode);
         }
 
         let component_root: *mut ComponentTreeNode = &mut component_tree as *mut ComponentTreeNode;
-        // A component can output only 1 subtree, but the subtree may have an unknown amount of variants.
-        // The subtree variant is determined by the state, much like a function. f(s) = ... where f(s) = Subtree produced and s = State
-        // The algorithm is as follows:
-        // 1. Determine if the currently visited child is an element or a component.
-        // 2. If the child is an element: Add the children of the element to the list of elements to visit.
-        // 3. If the child is a component: Produce the subtree with the inputted state and add the parent of the subtree to the to visit list.
-
         let root_spec = ComponentSpecification {
             component: ComponentOrElement::Element(root_element.clone()),
             key: None,
@@ -126,11 +122,11 @@ pub(crate) fn create_trees_from_render_specification(component_specification: Co
                     parent_element_ptr = tree_node.parent_element_ptr.as_mut().unwrap().children_mut().last_mut().unwrap().as_mut();
 
                     let new_component_node = ComponentTreeNode {
-                        key: None,
+                        key: key,
                         tag: new_tag,
                         update: None,
                         children: vec![],
-                        children_keys: vec![],
+                        children_keys: HashMap::new(),
                         id,
                     };
 
@@ -160,7 +156,12 @@ pub(crate) fn create_trees_from_render_specification(component_specification: Co
                     to_visit.extend(new_to_visits.into_iter().rev());
                 }
                 ComponentOrElement::ComponentSpec(component_spec, new_tag, type_id) => {
-                    let id = if let Some(old_tag) = old_tag {
+
+                    let children_keys = (*parent_component_ptr).children_keys.clone();
+
+                    let id: u64 = if key.is_some() && children_keys.contains_key(&key.clone().unwrap()) {
+                        *(children_keys.get(&key.clone().unwrap()).unwrap())
+                    } else if let Some(old_tag) = old_tag {
                         println!("Old Tag: {}, New Tag: {}", old_tag, new_tag);
                         if *new_tag == old_tag {
                             (*tree_node.old_component_node.unwrap()).id
@@ -174,13 +175,18 @@ pub(crate) fn create_trees_from_render_specification(component_specification: Co
                     let new_component = component_spec(props, children, id);
 
                     let new_component_node = ComponentTreeNode {
-                        key,
+                        key: key.clone(),
                         tag: (*new_tag).clone(),
                         update: None,
                         children: vec![],
-                        children_keys: vec![],
+                        children_keys: HashMap::new(),
                         id,
                     };
+
+                    // Add the current child id to the children_keys hashmap in the parent.
+                    if let Some(key) = key.clone() {
+                        parent_component_ptr.as_mut().unwrap().children_keys.insert(key, id);
+                    }
 
                     // Add the new component node to the tree and get a pointer to it.
                     parent_component_ptr.as_mut().unwrap().children.push(new_component_node);
