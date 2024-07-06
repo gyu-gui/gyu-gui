@@ -12,6 +12,7 @@ use crate::events::Message;
 
 pub trait Element: Any + StandardElementClone + Debug + Send {
     fn children(&self) -> Vec<Box<dyn Element>>;
+    fn children2<'a>(&'a self) -> Vec<&'a dyn Element>;
 
     fn children_mut(&mut self) -> &mut Vec<Box<dyn Element>>;
 
@@ -34,8 +35,8 @@ pub trait Element: Any + StandardElementClone + Debug + Send {
     
     fn set_id(&mut self, id: Option<String>);
     
-    fn parent_component_id(&self) -> u64;
-    fn set_parent_component_id(&mut self, id: u64);
+    fn component_id(&self) -> u64;
+    fn set_component_id(&mut self, id: u64);
 }
 
 impl<T: Element> From<T> for Box<dyn Element> {
@@ -92,7 +93,7 @@ impl dyn Element {
             } else {
                 prefix.push_str("├─");
             }
-            println!("{}{}, Parent Component Id: {}", prefix, element.name(), element.parent_component_id());
+            println!("{}{}, Parent Component Id: {}", prefix, element.name(), element.component_id());
             let children = element.children();
             for (i, child) in children.iter().enumerate().rev() {
                 let is_last = i == children.len() - 1;

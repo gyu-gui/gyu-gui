@@ -17,7 +17,7 @@ pub struct Empty {
     style: Style,
     computed_style: Style,
     id: Option<String>,
-    parent_component_id: u64,
+    component_id: u64,
 }
 
 impl Empty {
@@ -27,7 +27,7 @@ impl Empty {
             style: Default::default(),
             computed_style: Default::default(),
             id: None,
-            parent_component_id: 0,
+            component_id: 0,
         }
     }
 }
@@ -35,6 +35,10 @@ impl Empty {
 impl Element for Empty {
     fn children(&self) -> Vec<Box<dyn Element>> {
         self.children.clone()
+    }
+    
+    fn children2<'a>(&'a self) -> Vec<&'a dyn Element> {
+        self.children.iter().map(|x| x.as_ref()).collect()
     }
 
     fn children_mut(&mut self) -> &mut Vec<Box<dyn Element>> {
@@ -91,11 +95,11 @@ impl Element for Empty {
         self.id = id;
     }
 
-    fn parent_component_id(&self) -> u64 {
-        self.parent_component_id
+    fn component_id(&self) -> u64 {
+        self.component_id
     }
 
-    fn set_parent_component_id(&mut self, id: u64) {
-        self.parent_component_id = id;
+    fn set_component_id(&mut self, id: u64) {
+        self.component_id = id;
     }
 }

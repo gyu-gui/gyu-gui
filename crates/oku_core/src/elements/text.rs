@@ -27,7 +27,7 @@ pub struct Text {
     computed_height: f32,
     computed_padding: [f32; 4],
     id: Option<String>,
-    parent_component_id: u64,
+    component_id: u64,
 }
 
 
@@ -49,13 +49,17 @@ impl Text {
             computed_height: 0.0,
             computed_padding: [0.0, 0.0, 0.0, 0.0],
             id: None,
-            parent_component_id: 0,
+            component_id: 0,
         }
     }
 }
 
 impl Element for Text {
     fn children(&self) -> Vec<Box<dyn Element>> {
+        Vec::new()
+    }
+    
+    fn children2<'a>(&'a self) -> Vec<&'a dyn Element> {
         Vec::new()
     }
 
@@ -173,12 +177,12 @@ impl Element for Text {
         self.id = id;
     }
 
-    fn parent_component_id(&self) -> u64 {
-        self.parent_component_id
+    fn component_id(&self) -> u64 {
+        self.component_id
     }
 
-    fn set_parent_component_id(&mut self, id: u64) {
-        self.parent_component_id = id;
+    fn set_component_id(&mut self, id: u64) {
+        self.component_id = id;
     }
 }
 
