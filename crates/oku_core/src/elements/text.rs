@@ -2,7 +2,7 @@ use std::any::Any;
 use std::sync::Arc;
 use crate::elements::layout_context::{CosmicTextContent, LayoutContext};
 use crate::elements::element::Element;
-use crate::elements::style::{AlignItems, Display, FlexDirection, JustifyContent, Style, Unit};
+use crate::elements::style::{AlignItems, Display, FlexDirection, JustifyContent, Style, Unit, Weight};
 use crate::renderer::color::Color;
 use crate::renderer::renderer::{Rectangle, Renderer};
 use crate::RenderContext;
@@ -130,8 +130,9 @@ impl Element for Text {
         let font_size = self.style.font_size;
         let font_line_height = font_size * 1.2;
         let metrics = Metrics::new(font_size, font_line_height);
-        let attrs = Attrs::new();
+        let mut attrs = Attrs::new();
 
+        attrs.weight = cosmic_text::Weight(self.style.font_weight.0);
         let style: taffy::Style = self.style.into();
 
         taffy_tree.new_leaf_with_context(style, LayoutContext::Text(CosmicTextContent::new(metrics, self.text.as_str(), attrs, font_system))).unwrap()
@@ -213,6 +214,10 @@ impl Text {
 
     pub const fn font_size(mut self, font_size: f32) -> Text {
         self.style.font_size = font_size;
+        self
+    }
+    pub const fn font_weight(mut self, font_weight: Weight) -> Text {
+        self.style.font_weight = font_weight;
         self
     }
 
