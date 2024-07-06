@@ -20,5 +20,5 @@ members = [
 ]
 
 [[example]]
-name = "test_binary"
-path = "examples/test_binary/test_binary.rs"
+name = "counter"
+path = "examples/test_binary/counter.rs"

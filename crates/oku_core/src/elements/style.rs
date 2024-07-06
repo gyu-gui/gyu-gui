@@ -1,8 +1,10 @@
+use taffy::LengthPercentage;
 use crate::renderer::color::Color;
 
 #[derive(Clone, Copy, Debug)]
 pub enum Unit {
     Px(f32),
+    Percentage(f32),
     Auto,
 }
 
@@ -74,12 +76,14 @@ pub struct Style {
 fn unit_to_taffy_dimension(unit: Unit) -> taffy::Dimension {
     match unit {
         Unit::Px(px) => taffy::Dimension::Length(px),
+        Unit::Percentage(percentage) => taffy::Dimension::Percent(percentage / 100.0),
         Unit::Auto => taffy::Dimension::Auto,
     }
 }
 
 impl Default for Style {
     fn default() -> Self {
+        
         Style {
             margin: [0.0; 4],
             padding: [0.0; 4],

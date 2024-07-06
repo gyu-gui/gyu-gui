@@ -267,28 +267,32 @@ async fn async_main(application: ComponentSpecification, mut rx: mpsc::Receiver<
 
                     renderer.surface_set_clear_color(Color::new_from_rgba_u8(255, 255, 255, 255));
 
-                    let window_element = Container::new().background(Color::new_from_rgba_u8(255, 255, 255, 255));
-                    let window_element: Box<dyn Element> = window_element.width(Unit::Px(renderer.surface_width())).into();
-
+                    let window_element = Container::new().into();
                     let old_component_tree = app.component_tree.as_ref();
                     let new_tree = create_trees_from_render_specification(app.app.clone(), window_element, old_component_tree);
                     app.component_tree = Some(new_tree.0);
 
                     let mut root = new_tree.1;
 
-                    let computed_style = root.computed_style_mut();
+                    root.computed_style_mut().width = Unit::Percentage(renderer.surface_width());
 
-                    // The root element should be 100% window width if the width is not already set.
-                    if computed_style.width.is_auto() {
-                        root.computed_style_mut().width = Unit::Px(renderer.surface_width());
+                    let is_user_root_height_auto = {
+                        let root_children = root.children_mut();
+                        root_children[0].children()[0].computed_style().height.is_auto()
+                    };
+
+                    root.children_mut()[0].computed_style_mut().width = Unit::Px(renderer.surface_width());
+                    
+                    if is_user_root_height_auto {
+                        root.computed_style_mut().height = Unit::Auto;
+                    } else {
+                        root.computed_style_mut().height = Unit::Px(renderer.surface_height());
                     }
 
-                    let mut window_element: Box<dyn Element> = root;
-                    window_element = layout(renderer.surface_width(), renderer.surface_height(), app.renderer_context.as_mut().unwrap(), &mut window_element);
-
-                    window_element.draw(renderer, app.renderer_context.as_mut().unwrap());
-
-                    app.element_tree = Some(window_element);
+                    root.print_tree();
+                    root = layout(renderer.surface_width(), renderer.surface_height(), app.renderer_context.as_mut().unwrap(), &mut root);
+                    root.draw(renderer, app.renderer_context.as_mut().unwrap());
+                    app.element_tree = Some(root);
 
                     renderer.submit();
                     send_response(id, wait_for_response, &tx).await;
