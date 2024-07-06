@@ -12,13 +12,14 @@ use oku::renderer::color::Color;
 use oku::RendererType::Wgpu;
 use oku::{component, oku_main_with_options, OkuOptions};
 use std::any::Any;
+use oku::elements::style::Weight;
 
 pub fn counter(_props: Option<Props>, children: Vec<ComponentSpecification>, id: u64) -> (ComponentSpecification, Option<UpdateFn>) {
     let count = RUNTIME.get_state(id).unwrap_or(0u32);
 
     (
         ComponentSpecification {
-            component: Text::new(format!("Counter Count: {}", count).as_str()).into(),
+            component: Text::new(format!("Counter Count: {}", count).as_str()).font_weight(Weight::SEMIBOLD).font_size(24.0).into(),
             key: None,
             props: None,
             children: vec![],

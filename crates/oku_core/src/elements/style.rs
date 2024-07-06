@@ -1,4 +1,3 @@
-use taffy::LengthPercentage;
 use crate::renderer::color::Color;
 
 #[derive(Clone, Copy, Debug)]
@@ -55,6 +54,47 @@ pub enum FlexDirection {
     ColumnReverse,
 }
 
+#[derive(Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Debug, Hash)]
+pub struct Weight(pub u16);
+
+impl Weight {
+    /// Thin weight (100), the thinnest value.
+    pub const THIN: Weight = Weight(100);
+    
+    /// Extra light weight (200).
+    pub const EXTRA_LIGHT: Weight = Weight(200);
+
+    /// Light weight (300).
+    pub const LIGHT: Weight = Weight(300);
+
+    /// Normal (400).
+    pub const NORMAL: Weight = Weight(400);
+
+    /// Medium weight (500, higher than normal).
+    pub const MEDIUM: Weight = Weight(500);
+
+    /// Semibold weight (600).
+    pub const SEMIBOLD: Weight = Weight(600);
+
+    /// Bold weight (700).
+    pub const BOLD: Weight = Weight(700);
+
+    /// Extra-bold weight (800).
+    pub const EXTRA_BOLD: Weight = Weight(800);
+
+    /// Black weight (900), the thickest value.
+    pub const BLACK: Weight = Weight(900);
+}
+
+
+impl Default for Weight {
+    #[inline]
+    fn default() -> Weight {
+        Weight::NORMAL
+    }
+}
+
+
 #[derive(Clone, Copy, Debug)]
 pub struct Style {
     pub margin: [f32; 4],
@@ -71,6 +111,7 @@ pub struct Style {
     pub color: Color,
     pub background: Color,
     pub font_size: f32,
+    pub font_weight: Weight,
 }
 
 fn unit_to_taffy_dimension(unit: Unit) -> taffy::Dimension {
@@ -98,6 +139,7 @@ impl Default for Style {
             color: Color::new_from_rgba_u8(0, 0, 0, 255),
             background: Color::new_from_rgba_u8(0, 0, 0, 0),
             font_size: 16.0,
+            font_weight: Default::default(),
         }
     }
 }
