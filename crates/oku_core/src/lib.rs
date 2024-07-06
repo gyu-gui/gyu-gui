@@ -387,17 +387,20 @@ async fn async_main(application: ComponentSpecification, mut rx: mpsc::Receiver<
                                 if !in_bounds {
                                     continue;
                                 }
-
-                                let id= element.component_id();
-                                let old_state = RUNTIME.get_state(id).unwrap_or(0u32);
-                                RUNTIME.set_state(id, old_state + 1u32);
                                 
+                                if let Some(update) = f.component.unwrap().update {
+                                    update(f.component.unwrap().id, Message::UserMessage(Box::new(5)));
+                                }
+
                                 println!("Element: {}, Component: {}", f.element.unwrap().name(), f.component.unwrap().id);
                             } else if f.component.is_some() {
                                 println!("Component: {}", f.component.unwrap().id);
                                 let id = f.component.unwrap().id;
-                                let old_state = RUNTIME.get_state(id).unwrap_or(0u32);
-                                RUNTIME.set_state(id, old_state + 1u32);
+                               /* let old_state = RUNTIME.get_state(id).unwrap_or(0u32);
+                                RUNTIME.set_state(id, old_state + 1u32);*/
+                                if let Some(update) = f.component.unwrap().update {
+                                    update(f.component.unwrap().id, Message::UserMessage(Box::new(5)));
+                                }
                             } else if f.element.is_some() {
                                 let element = f.element.unwrap();
                                 let in_bounds = element.in_bounds(app.mouse_position.0, app.mouse_position.1);
@@ -405,10 +408,10 @@ async fn async_main(application: ComponentSpecification, mut rx: mpsc::Receiver<
                                     continue;
                                 }
 
-                                let id= element.component_id();
+                            /*    let id= element.component_id();
                                 let old_state = RUNTIME.get_state(id).unwrap_or(0u32);
-                                RUNTIME.set_state(id, old_state + 1u32);
-                                
+                                RUNTIME.set_state(id, old_state + 1u32);*/
+
                                 println!("Element: {}", f.element.unwrap().name());
                             }
                         }
