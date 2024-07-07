@@ -9,10 +9,9 @@ use std::fmt::Debug;
 use taffy::{NodeId, TaffyTree};
 
 #[derive(Clone, Debug, Default)]
-pub(crate) struct CommonElementData {
+pub struct CommonElementData {
     pub style: Style,
     pub children: Vec<Box<dyn Element>>,
-    pub computed_style: Style,
     pub computed_x: f32,
     pub computed_y: f32,
     pub computed_width: f32,
@@ -24,13 +23,47 @@ pub(crate) struct CommonElementData {
 
 pub trait Element: Any + StandardElementClone + Debug + Send {
     
+    fn common_element_data(&self) -> &CommonElementData;
     fn common_element_data_mut(&mut self) -> &mut CommonElementData;
-    
-    fn children(&self) -> Vec<Box<dyn Element>>;
-    fn children_as_ref<'a>(&'a self) -> Vec<&'a dyn Element>;
 
+    fn children(&self) -> Vec<&dyn Element> {
+        self.common_element_data().children.iter().map(|x| x.as_ref()).collect()
+    }
+    
     fn children_mut(&mut self) -> &mut Vec<Box<dyn Element>> {
         &mut self.common_element_data_mut().children
+    }
+    
+    fn style(&self) -> &Style {
+        &self.common_element_data().style
+    }
+    
+    fn style_mut(&mut self) -> &mut Style {
+        &mut self.common_element_data_mut().style
+    }
+
+    fn in_bounds(&self, x: f32, y: f32) -> bool {
+        let common_element_data = self.common_element_data();
+        x >= common_element_data.computed_x
+            && x <= common_element_data.computed_x + common_element_data.computed_width
+            && y >= common_element_data.computed_y
+            && y <= common_element_data.computed_y + common_element_data.computed_height
+    }
+
+    fn id(&self) -> &Option<String> {
+        &self.common_element_data().id
+    }
+
+    fn set_id(&mut self, id: Option<String>) {
+        self.common_element_data_mut().id = id;
+    }
+
+    fn component_id(&self) -> u64 {
+        self.common_element_data().component_id
+    }
+    
+    fn set_component_id(&mut self, id: u64) { 
+        self.common_element_data_mut().component_id = id;
     }
 
     fn name(&self) -> &'static str;
@@ -41,18 +74,6 @@ pub trait Element: Any + StandardElementClone + Debug + Send {
 
     fn compute_layout(&mut self, taffy_tree: &mut TaffyTree<LayoutContext>, font_system: &mut FontSystem) -> NodeId;
     fn finalize_layout(&mut self, taffy_tree: &mut TaffyTree<LayoutContext>, root_node: NodeId, x: f32, y: f32);
-
-    fn computed_style(&self) -> Style;
-    fn computed_style_mut(&mut self) -> &mut Style;
-
-    fn in_bounds(&self, x: f32, y: f32) -> bool;
-
-    fn id(&self) -> &Option<String>;
-
-    fn set_id(&mut self, id: Option<String>);
-
-    fn component_id(&self) -> u64;
-    fn set_component_id(&mut self, id: u64);
 }
 
 impl<T: Element> From<T> for Box<dyn Element> {
@@ -97,7 +118,7 @@ impl<T: Element> From<T> for ComponentSpecification {
 
 impl dyn Element {
     pub fn print_tree(&self) {
-        let mut elements: Vec<(Box<Self>, usize, bool)> = vec![(self.clone_box(), 0, true)];
+        let mut elements: Vec<(&dyn Element, usize, bool)> = vec![(self, 0, true)];
         while let Some((element, indent, is_last)) = elements.pop() {
             let mut prefix = String::new();
             for _ in 0..indent {
@@ -112,7 +133,7 @@ impl dyn Element {
             let children = element.children();
             for (i, child) in children.iter().enumerate().rev() {
                 let is_last = i == children.len() - 1;
-                elements.push((child.clone(), indent + 1, is_last));
+                elements.push((*child, indent + 1, is_last));
             }
         }
     }

@@ -9,7 +9,7 @@ use taffy::{NodeId, TaffyTree};
 
 #[derive(Clone, Default, Debug)]
 pub struct Container {
-    common_element_data: CommonElementData
+    pub common_element_data: CommonElementData
 }
 
 impl Container {
@@ -21,16 +21,12 @@ impl Container {
 }
 
 impl Element for Container {
+    fn common_element_data(&self) -> &CommonElementData {
+        &self.common_element_data
+    }
+
     fn common_element_data_mut(&mut self) -> &mut CommonElementData {
         &mut self.common_element_data
-    }
-
-    fn children(&self) -> Vec<Box<dyn Element>> {
-        self.common_element_data.children.clone()
-    }
-
-    fn children_as_ref<'a>(&'a self) -> Vec<&'a dyn Element> {
-        self.common_element_data.children.iter().map(|x| x.as_ref()).collect()
     }
     
     fn name(&self) -> &'static str {
@@ -48,7 +44,7 @@ impl Element for Container {
         }
     }
 
-    fn debug_draw(&mut self, render_context: &mut RenderContext) {
+    fn debug_draw(&mut self, _render_context: &mut RenderContext) {
     }
 
     fn compute_layout(&mut self, taffy_tree: &mut TaffyTree<LayoutContext>, font_system: &mut FontSystem) -> NodeId {
@@ -79,61 +75,12 @@ impl Element for Container {
             child.finalize_layout(taffy_tree, child2, self.common_element_data.computed_x, self.common_element_data.computed_y);
         }
     }
-
-    fn computed_style(&self) -> Style {
-        self.common_element_data.style
-    }
-    fn computed_style_mut(&mut self) -> &mut Style {
-        &mut self.common_element_data.style
-    }
-
-    fn in_bounds(&self, x: f32, y: f32) -> bool {
-        x >= self.common_element_data.computed_x
-            && x <= self.common_element_data.computed_x + self.common_element_data.computed_width
-            && y >= self.common_element_data.computed_y
-            && y <= self.common_element_data.computed_y + self.common_element_data.computed_height
-    }
-
-    fn id(&self) -> &Option<String> {
-        &self.common_element_data.id
-    }
-
-    fn set_id(&mut self, id: Option<String>) {
-        self.common_element_data.id = id;
-    }
-
-    fn component_id(&self) -> u64 {
-        self.common_element_data.component_id
-    }
-
-    fn set_component_id(&mut self, id: u64) {
-        self.common_element_data.component_id = id;
-    }
 }
 
 impl Container {
     pub fn add_child(mut self, widget: Box<dyn Element>) -> Container {
         self.common_element_data.children.push(widget);
         self
-    }
-
-    pub const fn computed_x(&self) -> f32 {
-        self.common_element_data.computed_x
-    }
-
-    pub const fn computed_y(&self) -> f32 {
-        self.common_element_data.computed_y
-    }
-
-    pub const fn computed_width(&self) -> f32 {
-        self.common_element_data.computed_width
-    }
-
-    pub const fn computed_height(&self) -> f32 {
-        self.common_element_data.computed_height
-    }
-    pub const fn computed_padding(&self) -> [f32; 4] {
-        self.common_element_data.computed_padding
     }
 
     // Styles

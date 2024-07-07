@@ -10,7 +10,7 @@ use taffy::{NodeId, TaffyTree};
 #[derive(Clone, Default, Debug)]
 pub struct Image {
     image_path: String,
-    common_element_data: CommonElementData,
+    pub common_element_data: CommonElementData,
 }
 
 impl Image {
@@ -23,20 +23,12 @@ impl Image {
 }
 
 impl Element for Image {
+    fn common_element_data(&self) -> &CommonElementData {
+        &self.common_element_data
+    }
+
     fn common_element_data_mut(&mut self) -> &mut CommonElementData {
         &mut self.common_element_data
-    }
-
-    fn children(&self) -> Vec<Box<dyn Element>> {
-        Vec::new()
-    }
-
-    fn children_as_ref<'a>(&'a self) -> Vec<&'a dyn Element> {
-        Vec::new()
-    }
-
-    fn children_mut(&mut self) -> &mut Vec<Box<dyn Element>> {
-        &mut self.common_element_data.children
     }
 
     fn name(&self) -> &'static str {
@@ -50,7 +42,7 @@ impl Element for Image {
         );
     }
 
-    fn debug_draw(&mut self, render_context: &mut RenderContext) {
+    fn debug_draw(&mut self, _render_context: &mut RenderContext) {
     }
 
     fn compute_layout(&mut self, taffy_tree: &mut TaffyTree<LayoutContext>, _font_system: &mut FontSystem) -> NodeId {
@@ -77,36 +69,6 @@ impl Element for Image {
         self.common_element_data.computed_height = result.size.height;
 
         self.common_element_data.computed_padding = [result.padding.top, result.padding.right, result.padding.bottom, result.padding.left];
-    }
-
-    fn computed_style(&self) -> Style {
-        self.common_element_data.style
-    }
-    fn computed_style_mut(&mut self) -> &mut Style {
-        &mut self.common_element_data.style
-    }
-
-    fn in_bounds(&self, x: f32, y: f32) -> bool {
-        x >= self.common_element_data.computed_x
-            && x <= self.common_element_data.computed_x + self.common_element_data.computed_width
-            && y >= self.common_element_data.computed_y
-            && y <= self.common_element_data.computed_y + self.common_element_data.computed_height
-    }
-
-    fn id(&self) -> &Option<String> {
-        &self.common_element_data.id
-    }
-
-    fn set_id(&mut self, id: Option<String>) {
-        self.common_element_data.id = id;
-    }
-
-    fn component_id(&self) -> u64 {
-        self.common_element_data.component_id
-    }
-
-    fn set_component_id(&mut self, id: u64) {
-        self.common_element_data.component_id = id;
     }
 }
 
@@ -192,14 +154,7 @@ impl Image {
     pub const fn computed_padding(&self) -> [f32; 4] {
         self.common_element_data.computed_padding
     }
-
-    pub fn computed_style(&self) -> Style {
-        self.common_element_data.style
-    }
-    pub fn computed_style_mut(&mut self) -> &mut Style {
-        &mut self.common_element_data.style
-    }
-
+    
     pub fn in_bounds(&self, x: f32, y: f32) -> bool {
         x >= self.common_element_data.computed_x
             && x <= self.common_element_data.computed_x + self.common_element_data.computed_width

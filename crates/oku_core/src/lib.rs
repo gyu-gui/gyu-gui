@@ -278,19 +278,19 @@ async fn async_main(
 
                     let mut root = new_tree.1;
 
-                    root.computed_style_mut().width = Unit::Percentage(renderer.surface_width());
+                    root.style_mut().width = Unit::Percentage(renderer.surface_width());
 
                     let is_user_root_height_auto = {
                         let root_children = root.children_mut();
-                        root_children[0].children()[0].computed_style().height.is_auto()
+                        root_children[0].children()[0].style().height.is_auto()
                     };
 
-                    root.children_mut()[0].computed_style_mut().width = Unit::Px(renderer.surface_width());
+                    root.children_mut()[0].style_mut().width = Unit::Px(renderer.surface_width());
 
                     if is_user_root_height_auto {
-                        root.computed_style_mut().height = Unit::Auto;
+                        root.style_mut().height = Unit::Auto;
                     } else {
-                        root.computed_style_mut().height = Unit::Px(renderer.surface_height());
+                        root.style_mut().height = Unit::Px(renderer.surface_height());
                     }
 
                     root.print_tree();

@@ -66,7 +66,7 @@ impl<'a> Iterator for FiberNodePreOrderIterator<'a> {
 
                 if first_id == node.id {
                     if let Some(element) = self.element_stack.pop() {
-                        for child in element.children_as_ref().iter().rev() {
+                        for child in element.children().iter().rev() {
                             self.element_stack.push(*child);
                         }
                         Some(FiberNode::new(Some(node), Some(element)))
@@ -113,7 +113,7 @@ impl<'a> Iterator for FiberNodeLevelOrderIterator<'a> {
 
                 if first_id == node.id {
                     if let Some(element) = self.element_stack.pop_front() {
-                        for child in element.children_as_ref().iter() {
+                        for child in element.children().iter() {
                             self.element_stack.push_back(*child);
                         }
                         Some(FiberNode::new(Some(node), Some(element)))
