@@ -8,11 +8,30 @@ use std::any::Any;
 use std::fmt::Debug;
 use taffy::{NodeId, TaffyTree};
 
+#[derive(Clone, Debug, Default)]
+pub(crate) struct CommonElementData {
+    pub style: Style,
+    pub children: Vec<Box<dyn Element>>,
+    pub computed_style: Style,
+    pub computed_x: f32,
+    pub computed_y: f32,
+    pub computed_width: f32,
+    pub computed_height: f32,
+    pub computed_padding: [f32; 4],
+    pub id: Option<String>,
+    pub component_id: u64,
+}
+
 pub trait Element: Any + StandardElementClone + Debug + Send {
+    
+    fn common_element_data_mut(&mut self) -> &mut CommonElementData;
+    
     fn children(&self) -> Vec<Box<dyn Element>>;
     fn children_as_ref<'a>(&'a self) -> Vec<&'a dyn Element>;
 
-    fn children_mut(&mut self) -> &mut Vec<Box<dyn Element>>;
+    fn children_mut(&mut self) -> &mut Vec<Box<dyn Element>> {
+        &mut self.common_element_data_mut().children
+    }
 
     fn name(&self) -> &'static str;
 

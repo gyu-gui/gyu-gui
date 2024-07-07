@@ -1,4 +1,4 @@
-use crate::elements::element::Element;
+use crate::elements::element::{CommonElementData, Element};
 use crate::elements::layout_context::LayoutContext;
 use crate::elements::style::Style;
 use crate::renderer::renderer::Renderer;
@@ -8,36 +8,28 @@ use taffy::{NodeId, TaffyTree};
 
 #[derive(Clone, Default, Debug)]
 pub struct Empty {
-    children: Vec<Box<dyn Element>>,
-    style: Style,
-    computed_style: Style,
-    id: Option<String>,
-    component_id: u64,
+    common_element_data: CommonElementData
 }
 
 impl Empty {
     pub fn new() -> Empty {
         Empty {
-            children: vec![],
-            style: Default::default(),
-            computed_style: Default::default(),
-            id: None,
-            component_id: 0,
+            common_element_data: Default::default(),
         }
     }
 }
 
 impl Element for Empty {
+    fn common_element_data_mut(&mut self) -> &mut CommonElementData {
+        &mut self.common_element_data
+    }
+
     fn children(&self) -> Vec<Box<dyn Element>> {
-        self.children.clone()
+        self.common_element_data.children.clone()
     }
 
     fn children_as_ref<'a>(&'a self) -> Vec<&'a dyn Element> {
-        self.children.iter().map(|x| x.as_ref()).collect()
-    }
-
-    fn children_mut(&mut self) -> &mut Vec<Box<dyn Element>> {
-        &mut self.children
+        self.common_element_data.children.iter().map(|x| x.as_ref()).collect()
     }
 
     fn name(&self) -> &'static str {
@@ -51,12 +43,12 @@ impl Element for Empty {
     fn compute_layout(&mut self, taffy_tree: &mut TaffyTree<LayoutContext>, font_system: &mut FontSystem) -> NodeId {
         let mut child_nodes: Vec<NodeId> = Vec::with_capacity(self.children().len());
 
-        for child in self.children.iter_mut() {
+        for child in self.common_element_data.children.iter_mut() {
             let child_node = child.compute_layout(taffy_tree, font_system);
             child_nodes.push(child_node);
         }
 
-        let style: taffy::Style = self.style.into();
+        let style: taffy::Style = self.common_element_data.style.into();
 
         taffy_tree.new_with_children(style, &vec![]).unwrap()
     }
@@ -68,7 +60,7 @@ impl Element for Empty {
     }
 
     fn computed_style_mut(&mut self) -> &mut Style {
-        &mut self.computed_style
+        &mut self.common_element_data.computed_style
     }
 
     fn in_bounds(&self, _x: f32, _y: f32) -> bool {
@@ -76,18 +68,18 @@ impl Element for Empty {
     }
 
     fn id(&self) -> &Option<String> {
-        &self.id
+        &self.common_element_data.id
     }
 
     fn set_id(&mut self, id: Option<String>) {
-        self.id = id;
+        self.common_element_data.id = id;
     }
 
     fn component_id(&self) -> u64 {
-        self.component_id
+        self.common_element_data.component_id
     }
 
     fn set_component_id(&mut self, id: u64) {
-        self.component_id = id;
+        self.common_element_data.component_id = id;
     }
 }

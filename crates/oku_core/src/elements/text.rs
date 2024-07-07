@@ -1,4 +1,4 @@
-use crate::elements::element::Element;
+use crate::elements::element::{CommonElementData, Element};
 use crate::elements::layout_context::{CosmicTextContent, LayoutContext};
 use crate::elements::style::{AlignItems, Display, FlexDirection, JustifyContent, Style, Unit, Weight};
 use crate::renderer::color::Color;
@@ -9,44 +9,26 @@ use taffy::{NodeId, TaffyTree};
 
 #[derive(Clone, Default, Debug)]
 pub struct Text {
-    key: Option<String>,
-    tag: Option<String>,
-    style: Style,
-    children: Vec<Box<dyn Element>>,
     text: String,
     text_buffer: Option<Buffer>,
-    computed_x: f32,
-    computed_y: f32,
-    computed_width: f32,
-    computed_height: f32,
-    computed_padding: [f32; 4],
-    id: Option<String>,
-    component_id: u64,
+    common_element_data: CommonElementData
 }
 
 impl Text {
     pub fn new(text: &str) -> Text {
         Text {
-            key: None,
-            tag: None,
-            style: Style {
-                ..Default::default()
-            },
-            children: vec![],
             text: text.to_string(),
             text_buffer: None,
-            computed_x: 0.0,
-            computed_y: 0.0,
-            computed_width: 0.0,
-            computed_height: 0.0,
-            computed_padding: [0.0, 0.0, 0.0, 0.0],
-            id: None,
-            component_id: 0,
+            common_element_data: Default::default(),
         }
     }
 }
 
 impl Element for Text {
+    fn common_element_data_mut(&mut self) -> &mut CommonElementData {
+        &mut self.common_element_data
+    }
+
     fn children(&self) -> Vec<Box<dyn Element>> {
         Vec::new()
     }
@@ -56,7 +38,7 @@ impl Element for Text {
     }
 
     fn children_mut(&mut self) -> &mut Vec<Box<dyn Element>> {
-        &mut self.children
+        &mut self.common_element_data.children
     }
 
     fn name(&self) -> &'static str {
@@ -65,10 +47,10 @@ impl Element for Text {
 
     fn draw(&mut self, renderer: &mut Box<dyn Renderer + Send>, render_context: &mut RenderContext) {
         let text_color = cosmic_text::Color::rgba(
-            self.style.color.r_u8(),
-            self.style.color.g_u8(),
-            self.style.color.b_u8(),
-            self.style.color.a_u8(),
+            self.common_element_data.style.color.r_u8(),
+            self.common_element_data.style.color.g_u8(),
+            self.common_element_data.style.color.b_u8(),
+            self.common_element_data.style.color.a_u8(),
         );
 
         if self.text_buffer.is_none() {
@@ -80,8 +62,8 @@ impl Element for Text {
         let text_buffer = self.text_buffer.as_mut().unwrap();
 
         renderer.draw_rect(
-            Rectangle::new(self.computed_x, self.computed_y, self.computed_width, self.computed_height),
-            self.style.background,
+            Rectangle::new(self.common_element_data.computed_x, self.common_element_data.computed_y, self.common_element_data.computed_width, self.common_element_data.computed_height),
+            self.common_element_data.style.background,
         );
 
         text_buffer.draw(
@@ -94,11 +76,11 @@ impl Element for Text {
                 let b = color.b();
                 let a = color.a();
                 let a1 = a as f32 / 255.0;
-                let a2 = self.style.color.a / 255.0;
+                let a2 = self.common_element_data.style.color.a / 255.0;
                 let a = (a1 * a2 * 255.0) as u8;
 
-                let p_x: i32 = (element_x + self.computed_padding[3] + x as f32) as i32;
-                let p_y: i32 = (element_y + self.computed_padding[0] + y as f32) as i32;
+                let p_x: i32 = (element_x + self.common_element_data.computed_padding[3] + x as f32) as i32;
+                let p_y: i32 = (element_y + self.common_element_data.computed_padding[0] + y as f32) as i32;
 
                 renderer.draw_rect(
                     Rectangle::new(p_x as f32, p_y as f32, w as f32, h as f32),
@@ -111,13 +93,13 @@ impl Element for Text {
     fn debug_draw(&mut self, _render_context: &mut RenderContext) {}
 
     fn compute_layout(&mut self, taffy_tree: &mut TaffyTree<LayoutContext>, font_system: &mut FontSystem) -> NodeId {
-        let font_size = self.style.font_size;
+        let font_size = self.common_element_data.style.font_size;
         let font_line_height = font_size * 1.2;
         let metrics = Metrics::new(font_size, font_line_height);
         let mut attrs = Attrs::new();
 
-        attrs.weight = cosmic_text::Weight(self.style.font_weight.0);
-        let style: taffy::Style = self.style.into();
+        attrs.weight = cosmic_text::Weight(self.common_element_data.style.font_weight.0);
+        let style: taffy::Style = self.common_element_data.style.into();
 
         taffy_tree
             .new_leaf_with_context(
@@ -136,43 +118,43 @@ impl Element for Text {
             _ => {}
         }
 
-        self.computed_x = x + result.location.x;
-        self.computed_y = y + result.location.y;
+        self.common_element_data.computed_x = x + result.location.x;
+        self.common_element_data.computed_y = y + result.location.y;
 
-        self.computed_width = result.size.width;
-        self.computed_height = result.size.height;
+        self.common_element_data.computed_width = result.size.width;
+        self.common_element_data.computed_height = result.size.height;
 
-        self.computed_padding = [result.padding.top, result.padding.right, result.padding.bottom, result.padding.left];
+        self.common_element_data.computed_padding = [result.padding.top, result.padding.right, result.padding.bottom, result.padding.left];
     }
 
     fn computed_style(&self) -> Style {
-        self.style
+        self.common_element_data.style
     }
     fn computed_style_mut(&mut self) -> &mut Style {
-        &mut self.style
+        &mut self.common_element_data.style
     }
 
     fn in_bounds(&self, x: f32, y: f32) -> bool {
-        x >= self.computed_x
-            && x <= self.computed_x + self.computed_width
-            && y >= self.computed_y
-            && y <= self.computed_y + self.computed_height
+        x >= self.common_element_data.computed_x
+            && x <= self.common_element_data.computed_x + self.common_element_data.computed_width
+            && y >= self.common_element_data.computed_y
+            && y <= self.common_element_data.computed_y + self.common_element_data.computed_height
     }
 
     fn id(&self) -> &Option<String> {
-        &self.id
+        &self.common_element_data.id
     }
 
     fn set_id(&mut self, id: Option<String>) {
-        self.id = id;
+        self.common_element_data.id = id;
     }
 
     fn component_id(&self) -> u64 {
-        self.component_id
+        self.common_element_data.component_id
     }
 
     fn set_component_id(&mut self, id: u64) {
-        self.component_id = id;
+        self.common_element_data.component_id = id;
     }
 }
 
@@ -183,93 +165,93 @@ impl Text {
 
     // Styles
     pub const fn margin(mut self, top: f32, right: f32, bottom: f32, left: f32) -> Text {
-        self.style.margin = [top, right, bottom, left];
+        self.common_element_data.style.margin = [top, right, bottom, left];
         self
     }
     pub const fn padding(mut self, top: f32, right: f32, bottom: f32, left: f32) -> Text {
-        self.style.padding = [top, right, bottom, left];
+        self.common_element_data.style.padding = [top, right, bottom, left];
         self
     }
 
     pub const fn background(mut self, background: Color) -> Text {
-        self.style.background = background;
+        self.common_element_data.style.background = background;
         self
     }
 
     pub const fn color(mut self, color: Color) -> Text {
-        self.style.color = color;
+        self.common_element_data.style.color = color;
         self
     }
 
     pub const fn font_size(mut self, font_size: f32) -> Text {
-        self.style.font_size = font_size;
+        self.common_element_data.style.font_size = font_size;
         self
     }
     pub const fn font_weight(mut self, font_weight: Weight) -> Text {
-        self.style.font_weight = font_weight;
+        self.common_element_data.style.font_weight = font_weight;
         self
     }
 
     pub const fn display(mut self, display: Display) -> Text {
-        self.style.display = display;
+        self.common_element_data.style.display = display;
         self
     }
 
     pub const fn justify_content(mut self, justify_content: JustifyContent) -> Text {
-        self.style.justify_content = Some(justify_content);
+        self.common_element_data.style.justify_content = Some(justify_content);
         self
     }
 
     pub const fn align_items(mut self, align_items: AlignItems) -> Text {
-        self.style.align_items = Some(align_items);
+        self.common_element_data.style.align_items = Some(align_items);
         self
     }
 
     pub const fn flex_direction(mut self, flex_direction: FlexDirection) -> Text {
-        self.style.flex_direction = flex_direction;
+        self.common_element_data.style.flex_direction = flex_direction;
         self
     }
 
     pub const fn width(mut self, width: Unit) -> Text {
-        self.style.width = width;
+        self.common_element_data.style.width = width;
         self
     }
 
     pub const fn height(mut self, height: Unit) -> Text {
-        self.style.height = height;
+        self.common_element_data.style.height = height;
         self
     }
 
     pub const fn computed_x(&self) -> f32 {
-        self.computed_x
+        self.common_element_data.computed_x
     }
 
     pub const fn computed_y(&self) -> f32 {
-        self.computed_y
+        self.common_element_data.computed_y
     }
 
     pub const fn computed_width(&self) -> f32 {
-        self.computed_width
+        self.common_element_data.computed_width
     }
 
     pub const fn computed_height(&self) -> f32 {
-        self.computed_height
+        self.common_element_data.computed_height
     }
     pub const fn computed_padding(&self) -> [f32; 4] {
-        self.computed_padding
+        self.common_element_data.computed_padding
     }
 
     pub fn computed_style(&self) -> Style {
-        self.style
+        self.common_element_data.style
     }
     pub fn computed_style_mut(&mut self) -> &mut Style {
-        &mut self.style
+        &mut self.common_element_data.style
     }
 
     pub fn in_bounds(&self, x: f32, y: f32) -> bool {
-        x >= self.computed_x
-            && x <= self.computed_x + self.computed_width
-            && y >= self.computed_y
-            && y <= self.computed_y + self.computed_height
+        x >= self.common_element_data.computed_x
+            && x <= self.common_element_data.computed_x + self.common_element_data.computed_width
+            && y >= self.common_element_data.computed_y
+            && y <= self.common_element_data.computed_y + self.common_element_data.computed_height
     }
 }
