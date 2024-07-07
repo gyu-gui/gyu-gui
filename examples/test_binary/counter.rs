@@ -13,6 +13,8 @@ use oku::renderer::color::Color;
 use oku::RendererType::Wgpu;
 use oku::{component, oku_main_with_options, OkuOptions};
 use std::any::Any;
+use std::path::PathBuf;
+use oku_core::elements::image::Image;
 
 pub fn counter(
     _props: Option<Props>,
@@ -43,6 +45,17 @@ pub fn app(
     children: Vec<ComponentSpecification>,
     id: u64,
 ) -> (ComponentSpecification, Option<UpdateFn>) {
+
+    let mut cat_path =  PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    cat_path.push("examples");
+    cat_path.push("cat.jpg");
+    
+    let mut oku_image_path =  PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    oku_image_path.push("examples");
+    oku_image_path.push("oku.png");
+    
+    let cat_path = cat_path.to_str().unwrap();
+    let oku_image_path = oku_image_path.to_str().unwrap();
     (
         ComponentSpecification {
             component: Container::new()
@@ -55,7 +68,10 @@ pub fn app(
                 .into(),
             key: None,
             props: None,
-            children: vec![ComponentSpecification {
+            children: vec![
+                Image::new(cat_path).into(),
+                Image::new(oku_image_path).into(),
+                ComponentSpecification {
                 component: Container::new()
                     .background(Color::new_from_rgba_u8(200, 200, 200, 255))
                     .padding(10.0, 20.0, 10.0, 20.0)

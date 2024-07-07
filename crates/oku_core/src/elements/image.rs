@@ -1,26 +1,23 @@
 use std::any::Any;
 use std::sync::Arc;
-use crate::elements::layout_context::{CosmicTextContent, LayoutContext};
+use crate::elements::layout_context::{ImageContext, LayoutContext};
 use crate::elements::element::Element;
 use crate::elements::style::{AlignItems, Display, FlexDirection, JustifyContent, Style, Unit, Weight};
 use crate::renderer::color::Color;
 use crate::renderer::renderer::{Rectangle, Renderer};
 use crate::RenderContext;
-use cosmic_text::{Attrs, Buffer, FontSystem, Metrics};
+use cosmic_text::{FontSystem};
 use taffy::{NodeId, TaffyTree};
-use tiny_skia::{LineCap, LineJoin, Paint, PathBuilder, Rect};
-use crate::elements::container::Container;
+use tiny_skia::{Paint, PathBuilder, Rect};
 use crate::events::Message;
-use crate::widget_id::create_unique_widget_id;
 
 #[derive(Clone, Default, Debug)]
-pub struct Text {
+pub struct Image {
     key: Option<String>,
     tag: Option<String>,
     style: Style,
     children: Vec<Box<dyn Element>>,
-    text: String,
-    text_buffer: Option<Buffer>,
+    image_path: String,
     computed_x: f32,
     computed_y: f32,
     computed_width: f32,
@@ -32,17 +29,16 @@ pub struct Text {
 
 
 
-impl Text {
-    pub fn new(text: &str) -> Text {
-        Text {
+impl Image {
+    pub fn new(image_path: &str) -> Image {
+        Image {
             key: None,
             tag: None,
             style: Style {
                 ..Default::default()
             },
             children: vec![],
-            text: text.to_string(),
-            text_buffer: None,
+            image_path: image_path.to_string(),
             computed_x: 0.0,
             computed_y: 0.0,
             computed_width: 0.0,
@@ -54,7 +50,7 @@ impl Text {
     }
 }
 
-impl Element for Text {
+impl Element for Image {
     fn children(&self) -> Vec<Box<dyn Element>> {
         Vec::new()
     }
@@ -68,46 +64,11 @@ impl Element for Text {
     }
 
     fn name(&self) -> &'static str {
-        "Text"
+        "Image"
     }
     
     fn draw(&mut self, renderer: &mut Box<dyn Renderer + Send>, render_context: &mut RenderContext) {
-        let text_color = cosmic_text::Color::rgba(self.style.color.r_u8(), self.style.color.g_u8(), self.style.color.b_u8(), self.style.color.a_u8());
-
-        /*let mut paint = Paint {
-            anti_alias: false,
-            ..Default::default()
-        };*/
-
-        if self.text_buffer.is_none() {
-            return;
-        }
-
-        let element_x = self.computed_x();
-        let element_y = self.computed_y();
-        let text_buffer = self.text_buffer.as_mut().unwrap();
-
-        //paint.set_color_rgba8(self.style.background.r_u8(), self.style.background.g_u8(), self.style.background.b_u8(), self.style.background.a_u8());
-        renderer.draw_rect(Rectangle::new(self.computed_x, self.computed_y, self.computed_width, self.computed_height), self.style.background);
-        //render_context.canvas.fill_rect(Rect::from_xywh(self.computed_x, self.computed_y, self.computed_width, self.computed_height).unwrap(), &paint, Transform::identity(), None);
-
-        text_buffer.draw(&mut render_context.font_system, &mut render_context.swash_cache, text_color, |x, y, w, h, color| {
-            let r = color.r();
-            let g = color.g();
-            let b = color.b();
-            let a = color.a();
-            let a1 = a as f32 / 255.0;
-            let a2 = self.style.color.a / 255.0;
-            let a = (a1 * a2 * 255.0) as u8;
-
-            //paint.set_color_rgba8(r, g, b, a);
-
-            let p_x: i32 = (element_x + self.computed_padding[3] + x as f32) as i32;
-            let p_y: i32 = (element_y + self.computed_padding[0] + y as f32) as i32;
-
-            renderer.draw_rect(Rectangle::new(p_x as f32, p_y as f32, w as f32, h as f32), Color::new_from_rgba_u8(r, g, b, a));
-            //render_context.canvas.fill_rect(Rect::from_xywh(p_x as f32, p_y as f32, w as f32, h as f32).unwrap(), &paint, Transform::identity(), None);
-        });
+        renderer.draw_image(Rectangle::new(self.computed_x, self.computed_y, self.computed_width, self.computed_height), self.image_path.as_str());
     }
 
     fn debug_draw(&mut self, render_context: &mut RenderContext) {
@@ -127,26 +88,17 @@ impl Element for Text {
     }
 
     fn compute_layout(&mut self, taffy_tree: &mut TaffyTree<LayoutContext>, font_system: &mut FontSystem) -> NodeId {
-        let font_size = self.style.font_size;
-        let font_line_height = font_size * 1.2;
-        let metrics = Metrics::new(font_size, font_line_height);
-        let mut attrs = Attrs::new();
-
-        attrs.weight = cosmic_text::Weight(self.style.font_weight.0);
         let style: taffy::Style = self.style.into();
 
-        taffy_tree.new_leaf_with_context(style, LayoutContext::Text(CosmicTextContent::new(metrics, self.text.as_str(), attrs, font_system))).unwrap()
+        taffy_tree.new_leaf_with_context(style, LayoutContext::Image(ImageContext {
+            width: 200.0,
+            height: 200.0,
+        })).unwrap()
     }
 
     fn finalize_layout(&mut self, taffy_tree: &mut TaffyTree<LayoutContext>, root_node: NodeId, x: f32, y: f32) {
         let result = taffy_tree.layout(root_node).unwrap();
-        let buffer = taffy_tree.get_node_context(root_node).unwrap();
-
-        match buffer {
-            LayoutContext::Text(cosmic_text) => self.text_buffer = Option::from(cosmic_text.buffer.clone()),
-            _ => {}
-        }
-
+        
         self.computed_x = x + result.location.x;
         self.computed_y = y + result.location.y;
 
@@ -188,66 +140,66 @@ impl Element for Text {
     }
 }
 
-impl Text {
-    pub fn add_child(self, _widget: Box<dyn Element>) -> Text {
+impl Image {
+    pub fn add_child(self, _widget: Box<dyn Element>) -> Image {
         panic!("Text can't have children.");
     }
 
     // Styles
-    pub const fn margin(mut self, top: f32, right: f32, bottom: f32, left: f32) -> Text {
+    pub const fn margin(mut self, top: f32, right: f32, bottom: f32, left: f32) -> Image {
         self.style.margin = [top, right, bottom, left];
         self
     }
-    pub const fn padding(mut self, top: f32, right: f32, bottom: f32, left: f32) -> Text {
+    pub const fn padding(mut self, top: f32, right: f32, bottom: f32, left: f32) -> Image {
         self.style.padding = [top, right, bottom, left];
         self
     }
 
-    pub const fn background(mut self, background: Color) -> Text {
+    pub const fn background(mut self, background: Color) -> Image {
         self.style.background = background;
         self
     }
 
-    pub const fn color(mut self, color: Color) -> Text {
+    pub const fn color(mut self, color: Color) -> Image {
         self.style.color = color;
         self
     }
 
-    pub const fn font_size(mut self, font_size: f32) -> Text {
+    pub const fn font_size(mut self, font_size: f32) -> Image {
         self.style.font_size = font_size;
         self
     }
-    pub const fn font_weight(mut self, font_weight: Weight) -> Text {
+    pub const fn font_weight(mut self, font_weight: Weight) -> Image {
         self.style.font_weight = font_weight;
         self
     }
 
-    pub const fn display(mut self, display: Display) -> Text {
+    pub const fn display(mut self, display: Display) -> Image {
         self.style.display = display;
         self
     }
 
-    pub const fn justify_content(mut self, justify_content: JustifyContent) -> Text {
+    pub const fn justify_content(mut self, justify_content: JustifyContent) -> Image {
         self.style.justify_content = Some(justify_content);
         self
     }
 
-    pub const fn align_items(mut self, align_items: AlignItems) -> Text {
+    pub const fn align_items(mut self, align_items: AlignItems) -> Image {
         self.style.align_items = Some(align_items);
         self
     }
 
-    pub const fn flex_direction(mut self, flex_direction: FlexDirection) -> Text {
+    pub const fn flex_direction(mut self, flex_direction: FlexDirection) -> Image {
         self.style.flex_direction = flex_direction;
         self
     }
 
-    pub const fn width(mut self, width: Unit) -> Text {
+    pub const fn width(mut self, width: Unit) -> Image {
         self.style.width = width;
         self
     }
 
-    pub const fn height(mut self, height: Unit) -> Text {
+    pub const fn height(mut self, height: Unit) -> Image {
         self.style.height = height;
         self
     }

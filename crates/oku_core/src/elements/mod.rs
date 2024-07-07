@@ -5,3 +5,4 @@ pub mod element;
 mod state_store;
 pub mod style;
 pub mod text;
+pub mod image;

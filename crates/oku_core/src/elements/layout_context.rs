@@ -35,8 +35,25 @@ impl CosmicTextContent {
     }
 }
 
+pub struct ImageContext {
+    pub width: f32,
+    pub height: f32,
+}
+
+impl ImageContext {
+    pub fn measure(&mut self, known_dimensions: taffy::geometry::Size<Option<f32>>, available_space: Size<AvailableSpace>) -> taffy::geometry::Size<f32> {
+        match (known_dimensions.width, known_dimensions.height) {
+            (Some(width), Some(height)) => Size { width, height },
+            (Some(width), None) => Size { width, height: (width / self.width) * self.height },
+            (None, Some(height)) => Size { width: (height / self.height) * self.width, height },
+            (None, None) => Size { width: self.width, height: self.height },
+        }
+    }   
+}
+
 pub enum LayoutContext {
     Text(CosmicTextContent),
+    Image(ImageContext),
 }
 
 pub fn measure_content(known_dimensions: Size<Option<f32>>, available_space: Size<AvailableSpace>, node_context: Option<&mut LayoutContext>, font_system: &mut FontSystem) -> Size<f32> {
@@ -51,5 +68,6 @@ pub fn measure_content(known_dimensions: Size<Option<f32>>, available_space: Siz
     match node_context {
         None => Size::ZERO,
         Some(LayoutContext::Text(text_context)) => text_context.measure(known_dimensions, available_space, font_system),
+        Some(LayoutContext::Image(image_context)) => image_context.measure(known_dimensions, available_space),
     }
 }
