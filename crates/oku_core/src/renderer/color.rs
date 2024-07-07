@@ -41,10 +41,13 @@ impl Color {
     pub const fn r_u8(&self) -> u8 {
         self.r as u8
     }
-    pub const fn g_u8(&self) -> u8 { self.g as u8 }
+    pub const fn g_u8(&self) -> u8 {
+        self.g as u8
+    }
     pub const fn b_u8(&self) -> u8 {
         self.b as u8
     }
-    pub const fn a_u8(&self) -> u8 { self.a as u8 }
-    
+    pub const fn a_u8(&self) -> u8 {
+        self.a as u8
+    }
 }

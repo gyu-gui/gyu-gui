@@ -13,22 +13,29 @@ impl CosmicTextContent {
         Self { buffer }
     }
 
-    fn measure(&mut self, known_dimensions: Size<Option<f32>>, available_space: Size<AvailableSpace>, font_system: &mut FontSystem) -> Size<f32> {
-        
+    fn measure(
+        &mut self,
+        known_dimensions: Size<Option<f32>>,
+        available_space: Size<AvailableSpace>,
+        font_system: &mut FontSystem,
+    ) -> Size<f32> {
         // Set width constraint
         let width_constraint = known_dimensions.width.or_else(|| match available_space.width {
             AvailableSpace::MinContent => Some(0.0),
             AvailableSpace::MaxContent => None,
             AvailableSpace::Definite(width) => Some(width),
         });
-        
+
         self.buffer.set_size(font_system, width_constraint, None);
 
         // Compute layout
         self.buffer.shape_until_scroll(font_system, true);
 
         // Determine measured size of text
-        let (width, total_lines) = self.buffer.layout_runs().fold((0.0, 0usize), |(width, total_lines), run| (run.line_w.max(width), total_lines + 1));
+        let (width, total_lines) = self
+            .buffer
+            .layout_runs()
+            .fold((0.0, 0usize), |(width, total_lines), run| (run.line_w.max(width), total_lines + 1));
         let height = total_lines as f32 * self.buffer.metrics().line_height;
 
         Size { width, height }
@@ -41,14 +48,27 @@ pub struct ImageContext {
 }
 
 impl ImageContext {
-    pub fn measure(&mut self, known_dimensions: taffy::geometry::Size<Option<f32>>, available_space: Size<AvailableSpace>) -> taffy::geometry::Size<f32> {
+    pub fn measure(
+        &mut self,
+        known_dimensions: Size<Option<f32>>,
+        _available_space: Size<AvailableSpace>,
+    ) -> Size<f32> {
         match (known_dimensions.width, known_dimensions.height) {
             (Some(width), Some(height)) => Size { width, height },
-            (Some(width), None) => Size { width, height: (width / self.width) * self.height },
-            (None, Some(height)) => Size { width: (height / self.height) * self.width, height },
-            (None, None) => Size { width: self.width, height: self.height },
+            (Some(width), None) => Size {
+                width,
+                height: (width / self.width) * self.height,
+            },
+            (None, Some(height)) => Size {
+                width: (height / self.height) * self.width,
+                height,
+            },
+            (None, None) => Size {
+                width: self.width,
+                height: self.height,
+            },
         }
-    }   
+    }
 }
 
 pub enum LayoutContext {
@@ -56,7 +76,12 @@ pub enum LayoutContext {
     Image(ImageContext),
 }
 
-pub fn measure_content(known_dimensions: Size<Option<f32>>, available_space: Size<AvailableSpace>, node_context: Option<&mut LayoutContext>, font_system: &mut FontSystem) -> Size<f32> {
+pub fn measure_content(
+    known_dimensions: Size<Option<f32>>,
+    available_space: Size<AvailableSpace>,
+    node_context: Option<&mut LayoutContext>,
+    font_system: &mut FontSystem,
+) -> Size<f32> {
     if let Size {
         width: Some(width),
         height: Some(height),

@@ -37,9 +37,9 @@ pub trait Renderer {
     fn present_surface(&mut self);
     fn resize_surface(&mut self, width: f32, height: f32);
     fn surface_set_clear_color(&mut self, color: Color);
-    
+
     fn draw_rect(&mut self, rectangle: Rectangle, fill_color: Color);
     fn draw_image(&mut self, rectangle: Rectangle, path: &str);
-    
+
     fn submit(&mut self);
 }

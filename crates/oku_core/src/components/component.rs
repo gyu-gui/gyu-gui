@@ -1,12 +1,13 @@
-use std::any::{Any, TypeId};
-use std::sync::{Arc, RwLock};
 use crate::components::props::Props;
 use crate::elements::element::Element;
 use crate::events::Message;
-use crate::reactive::reactive::RUNTIME;
-
-pub type ViewFn = fn (props: Option<Props>, children: Vec<ComponentSpecification>, id: u64) -> (ComponentSpecification, Option<UpdateFn>);
-pub type UpdateFn = fn (id: u64, message: Message);
+use std::any::TypeId;
+pub type ViewFn = fn(
+    props: Option<Props>,
+    children: Vec<ComponentSpecification>,
+    id: u64,
+) -> (ComponentSpecification, Option<UpdateFn>);
+pub type UpdateFn = fn(id: u64, message: Message);
 
 #[derive(Clone)]
 pub enum ComponentOrElement {
@@ -19,7 +20,7 @@ pub struct ComponentSpecification {
     pub component: ComponentOrElement,
     pub key: Option<String>,
     pub props: Option<Props>,
-    pub children: Vec<ComponentSpecification>
+    pub children: Vec<ComponentSpecification>,
 }
 #[macro_export]
 macro_rules! component {
@@ -34,13 +35,13 @@ where
 {
     fn view(&self, props: Option<Props>, children: Vec<ComponentSpecification>, id: u64) -> ComponentSpecification;
 
-/*    fn get_state(&self) -> Option<State> {
-        RUNTIME.get_state(0)
-    }
+    /*    fn get_state(&self) -> Option<State> {
+            RUNTIME.get_state(0)
+        }
 
-    fn set_state(&self, value: State) {
-        RUNTIME.set_state(0, value);
-    }
-*/
+        fn set_state(&self, value: State) {
+            RUNTIME.set_state(0, value);
+        }
+    */
     fn update(&self, id: u64, message: crate::events::Message);
 }

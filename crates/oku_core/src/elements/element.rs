@@ -1,3 +1,4 @@
+use crate::components::component::{ComponentOrElement, ComponentSpecification};
 use crate::elements::layout_context::LayoutContext;
 use crate::elements::style::Style;
 use crate::renderer::renderer::Renderer;
@@ -5,19 +6,16 @@ use crate::RenderContext;
 use cosmic_text::FontSystem;
 use std::any::Any;
 use std::fmt::Debug;
-use std::sync::Arc;
 use taffy::{NodeId, TaffyTree};
-use crate::components::component::{ComponentSpecification, ComponentOrElement};
-use crate::events::Message;
 
 pub trait Element: Any + StandardElementClone + Debug + Send {
     fn children(&self) -> Vec<Box<dyn Element>>;
-    fn children2<'a>(&'a self) -> Vec<&'a dyn Element>;
+    fn children_as_ref<'a>(&'a self) -> Vec<&'a dyn Element>;
 
     fn children_mut(&mut self) -> &mut Vec<Box<dyn Element>>;
 
     fn name(&self) -> &'static str;
-    
+
     fn draw(&mut self, renderer: &mut Box<dyn Renderer + Send>, render_context: &mut RenderContext);
 
     fn debug_draw(&mut self, render_context: &mut RenderContext);
@@ -29,12 +27,11 @@ pub trait Element: Any + StandardElementClone + Debug + Send {
     fn computed_style_mut(&mut self) -> &mut Style;
 
     fn in_bounds(&self, x: f32, y: f32) -> bool;
-    fn add_update_handler(&mut self, update: Arc<fn(msg: Message, state: Box<dyn Any>, id: u64)>);
-    
+
     fn id(&self) -> &Option<String>;
-    
+
     fn set_id(&mut self, id: Option<String>);
-    
+
     fn component_id(&self) -> u64;
     fn set_component_id(&mut self, id: u64);
 }
@@ -80,7 +77,6 @@ impl<T: Element> From<T> for ComponentSpecification {
 }
 
 impl dyn Element {
-
     pub fn print_tree(&self) {
         let mut elements: Vec<(Box<Self>, usize, bool)> = vec![(self.clone_box(), 0, true)];
         while let Some((element, indent, is_last)) = elements.pop() {
@@ -108,8 +104,8 @@ pub trait StandardElementClone {
 }
 
 impl<T> StandardElementClone for T
-    where
-        T: Element + Clone,
+where
+    T: Element + Clone,
 {
     fn clone_box(&self) -> Box<dyn Element> {
         Box::new(self.clone())

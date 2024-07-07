@@ -1,9 +1,9 @@
-use std::cell::RefCell;
-use std::collections::HashMap;
-use std::rc::Rc;
 use crate::components::component::{ComponentOrElement, ComponentSpecification, UpdateFn};
 use crate::elements::element::Element;
 use crate::widget_id::create_unique_widget_id;
+use std::cell::RefCell;
+use std::collections::HashMap;
+use std::rc::Rc;
 
 #[derive(Clone)]
 pub struct ComponentTreeNode {
@@ -14,10 +14,6 @@ pub struct ComponentTreeNode {
     pub children: Vec<ComponentTreeNode>,
     pub children_keys: HashMap<String, u64>,
     pub id: u64,
-}
-
-struct UnsafeElement {
-    element: *mut dyn Element,
 }
 
 #[derive(Clone)]
@@ -55,7 +51,11 @@ impl ComponentTreeNode {
 
 /// Creates a new Component tree and Element tree from a ComponentSpecification.
 /// The ids of the Component tree are stable across renders.
-pub(crate) fn create_trees_from_render_specification(component_specification: ComponentSpecification, mut root_element: Box<dyn Element>, old_component_tree: Option<&ComponentTreeNode>) -> (ComponentTreeNode, Box<dyn Element>) {
+pub(crate) fn create_trees_from_render_specification(
+    component_specification: ComponentSpecification,
+    mut root_element: Box<dyn Element>,
+    old_component_tree: Option<&ComponentTreeNode>,
+) -> (ComponentTreeNode, Box<dyn Element>) {
     println!("-----------------------------------------");
     unsafe {
         let mut component_tree = ComponentTreeNode {
@@ -73,7 +73,8 @@ pub(crate) fn create_trees_from_render_specification(component_specification: Co
         // HACK: This is a workaround to get the first child of the old component tree because we start at the first level on the new tree.
         // This is because the root of the component tree is not a component, but a dummy node.
         if old_component_tree_as_ptr.is_some() {
-            old_component_tree_as_ptr = Some((*old_component_tree_as_ptr.unwrap()).children.get(0).unwrap() as *const ComponentTreeNode);
+            old_component_tree_as_ptr =
+                Some((*old_component_tree_as_ptr.unwrap()).children.get(0).unwrap() as *const ComponentTreeNode);
         }
 
         let component_root: *mut ComponentTreeNode = &mut component_tree as *mut ComponentTreeNode;
@@ -123,7 +124,8 @@ pub(crate) fn create_trees_from_render_specification(component_specification: Co
 
                     // Move the new element into it's parent and set the parent element to be the new element.
                     tree_node.parent_element_ptr.as_mut().unwrap().children_mut().push(element);
-                    parent_element_ptr = tree_node.parent_element_ptr.as_mut().unwrap().children_mut().last_mut().unwrap().as_mut();
+                    parent_element_ptr =
+                        tree_node.parent_element_ptr.as_mut().unwrap().children_mut().last_mut().unwrap().as_mut();
 
                     let new_component_node = ComponentTreeNode {
                         is_element: true,
@@ -137,7 +139,8 @@ pub(crate) fn create_trees_from_render_specification(component_specification: Co
 
                     // Add the new component node to the tree and get a pointer to it.
                     parent_component_ptr.as_mut().unwrap().children.push(new_component_node);
-                    let new_component_pointer: *mut ComponentTreeNode = (*tree_node.parent_component_node).children.last_mut().unwrap();
+                    let new_component_pointer: *mut ComponentTreeNode =
+                        (*tree_node.parent_component_node).children.last_mut().unwrap();
 
                     // Get the old children of the old component node.
                     let mut olds: Vec<*const ComponentTreeNode> = vec![];
@@ -150,7 +153,6 @@ pub(crate) fn create_trees_from_render_specification(component_specification: Co
                     let mut new_to_visits: Vec<TreeVisitorNode> = vec![];
                     // Add the children of the new element to the to visit list.
                     for (index, child) in children.into_iter().enumerate() {
-
                         // Find old child by key and if no key is found, find by index.
                         let key = child.key.clone();
 
@@ -166,7 +168,6 @@ pub(crate) fn create_trees_from_render_specification(component_specification: Co
                                 index = old_index;
                                 break;
                             }
-
                         }
 
                         new_to_visits.push(TreeVisitorNode {
@@ -179,8 +180,7 @@ pub(crate) fn create_trees_from_render_specification(component_specification: Co
 
                     to_visit.extend(new_to_visits.into_iter().rev());
                 }
-                ComponentOrElement::ComponentSpec(component_spec, new_tag, type_id) => {
-
+                ComponentOrElement::ComponentSpec(component_spec, new_tag, _type_id) => {
                     let children_keys = (*parent_component_ptr).children_keys.clone();
 
                     let id: u64 = if key.is_some() && children_keys.contains_key(&key.clone().unwrap()) {
@@ -216,10 +216,13 @@ pub(crate) fn create_trees_from_render_specification(component_specification: Co
 
                     // Add the new component node to the tree and get a pointer to it.
                     parent_component_ptr.as_mut().unwrap().children.push(new_component_node);
-                    let new_component_pointer: *mut ComponentTreeNode = (*tree_node.parent_component_node).children.last_mut().unwrap();
+                    let new_component_pointer: *mut ComponentTreeNode =
+                        (*tree_node.parent_component_node).children.last_mut().unwrap();
 
                     // The old node should be the first child of the old component node.
-                    let old_component_tree = tree_node.old_component_node.map(|old_node| (*old_node).children.get(0).unwrap() as *const ComponentTreeNode);
+                    let old_component_tree = tree_node
+                        .old_component_node
+                        .map(|old_node| (*old_node).children.get(0).unwrap() as *const ComponentTreeNode);
 
                     // Add the computed component spec to the to visit list.
                     to_visit.push(TreeVisitorNode {

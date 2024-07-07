@@ -1,16 +1,12 @@
-use crate::elements::layout_context::LayoutContext;
 use crate::elements::element::Element;
+use crate::elements::layout_context::LayoutContext;
 use crate::elements::style::{AlignItems, Display, FlexDirection, JustifyContent, Style, Unit};
 use crate::renderer::color::Color;
 use crate::renderer::renderer::{Rectangle, Renderer};
 use crate::RenderContext;
 use cosmic_text::FontSystem;
-use std::any::Any;
-use std::sync::Arc;
 use taffy::{NodeId, TaffyTree};
 use tiny_skia::{Paint, PathBuilder, Rect};
-use crate::events::Message;
-use crate::widget_id::create_unique_widget_id;
 
 #[derive(Clone, Default, Debug)]
 pub struct Container {
@@ -47,8 +43,8 @@ impl Element for Container {
     fn children(&self) -> Vec<Box<dyn Element>> {
         self.children.clone()
     }
-    
-    fn children2<'a>(&'a self) -> Vec<&'a dyn Element> {
+
+    fn children_as_ref<'a>(&'a self) -> Vec<&'a dyn Element> {
         self.children.iter().map(|x| x.as_ref()).collect()
     }
 
@@ -59,14 +55,21 @@ impl Element for Container {
     fn name(&self) -> &'static str {
         "Container"
     }
-    
+
     fn draw(&mut self, renderer: &mut Box<dyn Renderer + Send>, render_context: &mut RenderContext) {
         let mut paint = Paint::default();
-        paint.set_color_rgba8(self.style.background.r_u8(), self.style.background.g_u8(), self.style.background.b_u8(), self.style.background.a_u8());
+        paint.set_color_rgba8(
+            self.style.background.r_u8(),
+            self.style.background.g_u8(),
+            self.style.background.b_u8(),
+            self.style.background.a_u8(),
+        );
         paint.anti_alias = true;
 
-        renderer.draw_rect(Rectangle::new(self.computed_x, self.computed_y, self.computed_width, self.computed_height), self.style.background);
-        //render_context.canvas.fill_rect(Rect::from_xywh(self.computed_x, self.computed_y, self.computed_width, self.computed_height).unwrap(), &paint, Transform::identity(), None);
+        renderer.draw_rect(
+            Rectangle::new(self.computed_x, self.computed_y, self.computed_width, self.computed_height),
+            self.style.background,
+        );
 
         for child in self.children.iter_mut() {
             child.draw(renderer, render_context);
@@ -79,7 +82,9 @@ impl Element for Container {
         paint.anti_alias = true;
 
         let mut path_builder = PathBuilder::new();
-        path_builder.push_rect(Rect::from_xywh(self.computed_x, self.computed_y, self.computed_width, self.computed_height).unwrap());
+        path_builder.push_rect(
+            Rect::from_xywh(self.computed_x, self.computed_y, self.computed_width, self.computed_height).unwrap(),
+        );
         path_builder.finish().unwrap();
 
         //render_context.canvas.stroke_path(&path, &paint, &stroke, Transform::identity(), None);
@@ -126,11 +131,10 @@ impl Element for Container {
     }
 
     fn in_bounds(&self, x: f32, y: f32) -> bool {
-        x >= self.computed_x && x <= self.computed_x + self.computed_width && y >= self.computed_y && y <= self.computed_y + self.computed_height
-    }
-
-    fn add_update_handler(&mut self, update: Arc<fn(Message, Box<dyn Any>, id: u64)>) {
-        todo!()
+        x >= self.computed_x
+            && x <= self.computed_x + self.computed_width
+            && y >= self.computed_y
+            && y <= self.computed_y + self.computed_height
     }
 
     fn id(&self) -> &Option<String> {

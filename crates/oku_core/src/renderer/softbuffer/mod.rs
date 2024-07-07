@@ -24,8 +24,10 @@ impl SoftwareRenderer {
 
         let context = softbuffer::Context::new(window.clone()).unwrap();
         let mut surface = softbuffer::Surface::new(&context, window.clone()).unwrap();
-        surface.resize(NonZeroU32::new(width as u32).unwrap(), NonZeroU32::new(height as u32).unwrap()).expect("TODO: panic message");
-        let framebuffer = tiny_skia::Pixmap::new(width as u32, height as u32).unwrap();
+        surface
+            .resize(NonZeroU32::new(width as u32).unwrap(), NonZeroU32::new(height as u32).unwrap())
+            .expect("TODO: panic message");
+        let framebuffer = Pixmap::new(width as u32, height as u32).unwrap();
 
         Self {
             render_commands: vec![],
@@ -68,8 +70,10 @@ impl Renderer for SoftwareRenderer {
     fn resize_surface(&mut self, width: f32, height: f32) {
         self.surface_width = width;
         self.surface_height = height;
-        let framebuffer = tiny_skia::Pixmap::new(width as u32, height as u32).unwrap();
-        self.surface.resize(NonZeroU32::new(width as u32).unwrap(), NonZeroU32::new(height as u32).unwrap()).expect("TODO: panic message");
+        let framebuffer = Pixmap::new(width as u32, height as u32).unwrap();
+        self.surface
+            .resize(NonZeroU32::new(width as u32).unwrap(), NonZeroU32::new(height as u32).unwrap())
+            .expect("TODO: panic message");
         self.framebuffer = framebuffer;
     }
 
@@ -81,12 +85,17 @@ impl Renderer for SoftwareRenderer {
         self.render_commands.push(RenderCommand::DrawRect(rectangle, fill_color));
     }
 
-    fn draw_image(&mut self, rectangle: Rectangle, path: &str) {
+    fn draw_image(&mut self, _rectangle: Rectangle, _path: &str) {
         todo!()
     }
 
     fn submit(&mut self) {
-       self.framebuffer.fill(tiny_skia::Color::from_rgba8(self.surface_clear_color.r_u8(), self.surface_clear_color.g_u8(), self.surface_clear_color.b_u8(), self.surface_clear_color.a_u8()));
+        self.framebuffer.fill(tiny_skia::Color::from_rgba8(
+            self.surface_clear_color.r_u8(),
+            self.surface_clear_color.g_u8(),
+            self.surface_clear_color.b_u8(),
+            self.surface_clear_color.a_u8(),
+        ));
 
         for command in self.render_commands.drain(..) {
             match command {

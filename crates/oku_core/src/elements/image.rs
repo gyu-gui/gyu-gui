@@ -1,15 +1,12 @@
-use std::any::Any;
-use std::sync::Arc;
-use crate::elements::layout_context::{ImageContext, LayoutContext};
 use crate::elements::element::Element;
+use crate::elements::layout_context::{ImageContext, LayoutContext};
 use crate::elements::style::{AlignItems, Display, FlexDirection, JustifyContent, Style, Unit, Weight};
 use crate::renderer::color::Color;
 use crate::renderer::renderer::{Rectangle, Renderer};
 use crate::RenderContext;
-use cosmic_text::{FontSystem};
+use cosmic_text::FontSystem;
 use taffy::{NodeId, TaffyTree};
 use tiny_skia::{Paint, PathBuilder, Rect};
-use crate::events::Message;
 
 #[derive(Clone, Default, Debug)]
 pub struct Image {
@@ -26,8 +23,6 @@ pub struct Image {
     id: Option<String>,
     component_id: u64,
 }
-
-
 
 impl Image {
     pub fn new(image_path: &str) -> Image {
@@ -54,8 +49,8 @@ impl Element for Image {
     fn children(&self) -> Vec<Box<dyn Element>> {
         Vec::new()
     }
-    
-    fn children2<'a>(&'a self) -> Vec<&'a dyn Element> {
+
+    fn children_as_ref<'a>(&'a self) -> Vec<&'a dyn Element> {
         Vec::new()
     }
 
@@ -66,9 +61,12 @@ impl Element for Image {
     fn name(&self) -> &'static str {
         "Image"
     }
-    
-    fn draw(&mut self, renderer: &mut Box<dyn Renderer + Send>, render_context: &mut RenderContext) {
-        renderer.draw_image(Rectangle::new(self.computed_x, self.computed_y, self.computed_width, self.computed_height), self.image_path.as_str());
+
+    fn draw(&mut self, renderer: &mut Box<dyn Renderer + Send>, _render_context: &mut RenderContext) {
+        renderer.draw_image(
+            Rectangle::new(self.computed_x, self.computed_y, self.computed_width, self.computed_height),
+            self.image_path.as_str(),
+        );
     }
 
     fn debug_draw(&mut self, render_context: &mut RenderContext) {
@@ -77,7 +75,9 @@ impl Element for Image {
         paint.anti_alias = true;
 
         let mut path_builder = PathBuilder::new();
-        path_builder.push_rect(Rect::from_xywh(self.computed_x, self.computed_y, self.computed_width, self.computed_height).unwrap());
+        path_builder.push_rect(
+            Rect::from_xywh(self.computed_x, self.computed_y, self.computed_width, self.computed_height).unwrap(),
+        );
         path_builder.finish().unwrap();
 
         //render_context.canvas.stroke_path(&path, &paint, &stroke, Transform::identity(), None);
@@ -87,18 +87,23 @@ impl Element for Image {
         }
     }
 
-    fn compute_layout(&mut self, taffy_tree: &mut TaffyTree<LayoutContext>, font_system: &mut FontSystem) -> NodeId {
+    fn compute_layout(&mut self, taffy_tree: &mut TaffyTree<LayoutContext>, _font_system: &mut FontSystem) -> NodeId {
         let style: taffy::Style = self.style.into();
 
-        taffy_tree.new_leaf_with_context(style, LayoutContext::Image(ImageContext {
-            width: 200.0,
-            height: 200.0,
-        })).unwrap()
+        taffy_tree
+            .new_leaf_with_context(
+                style,
+                LayoutContext::Image(ImageContext {
+                    width: 200.0,
+                    height: 200.0,
+                }),
+            )
+            .unwrap()
     }
 
     fn finalize_layout(&mut self, taffy_tree: &mut TaffyTree<LayoutContext>, root_node: NodeId, x: f32, y: f32) {
         let result = taffy_tree.layout(root_node).unwrap();
-        
+
         self.computed_x = x + result.location.x;
         self.computed_y = y + result.location.y;
 
@@ -116,11 +121,10 @@ impl Element for Image {
     }
 
     fn in_bounds(&self, x: f32, y: f32) -> bool {
-        x >= self.computed_x && x <= self.computed_x + self.computed_width && y >= self.computed_y && y <= self.computed_y + self.computed_height
-    }
-
-    fn add_update_handler(&mut self, update: Arc<fn(Message, Box<dyn Any>, id: u64)>) {
-        todo!()
+        x >= self.computed_x
+            && x <= self.computed_x + self.computed_width
+            && y >= self.computed_y
+            && y <= self.computed_y + self.computed_height
     }
 
     fn id(&self) -> &Option<String> {
@@ -231,6 +235,9 @@ impl Image {
     }
 
     pub fn in_bounds(&self, x: f32, y: f32) -> bool {
-        x >= self.computed_x && x <= self.computed_x + self.computed_width && y >= self.computed_y && y <= self.computed_y + self.computed_height
+        x >= self.computed_x
+            && x <= self.computed_x + self.computed_width
+            && y >= self.computed_y
+            && y <= self.computed_y + self.computed_height
     }
 }

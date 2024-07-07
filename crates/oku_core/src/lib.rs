@@ -12,9 +12,9 @@ pub mod reactive;
 #[cfg(test)]
 mod tests;
 
-use crate::components::component::{ComponentSpecification};
+use crate::components::component::ComponentSpecification;
 use crate::fiber_node::FiberNode;
-use crate::widget_id::{reset_unique_widget_id};
+use crate::widget_id::reset_unique_widget_id;
 use cosmic_text::{FontSystem, SwashCache};
 use std::sync::Arc;
 use std::time;
@@ -342,7 +342,7 @@ async fn async_main(
 
                     send_response(id, wait_for_response, &tx).await;
                 }
-                InternalMessage::MouseInput(mouse_input) => {
+                InternalMessage::MouseInput(_mouse_input) => {
                     {
                         let q = app.element_tree.as_ref().unwrap();
                         let fiber: FiberNode = FiberNode {

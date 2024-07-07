@@ -60,7 +60,7 @@ pub struct Weight(pub u16);
 impl Weight {
     /// Thin weight (100), the thinnest value.
     pub const THIN: Weight = Weight(100);
-    
+
     /// Extra light weight (200).
     pub const EXTRA_LIGHT: Weight = Weight(200);
 
@@ -86,14 +86,12 @@ impl Weight {
     pub const BLACK: Weight = Weight(900);
 }
 
-
 impl Default for Weight {
     #[inline]
     fn default() -> Weight {
         Weight::NORMAL
     }
 }
-
 
 #[derive(Clone, Copy, Debug)]
 pub struct Style {
@@ -124,7 +122,6 @@ fn unit_to_taffy_dimension(unit: Unit) -> taffy::Dimension {
 
 impl Default for Style {
     fn default() -> Self {
-        
         Style {
             margin: [0.0; 4],
             padding: [0.0; 4],

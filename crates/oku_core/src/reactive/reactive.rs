@@ -1,6 +1,6 @@
 use once_cell::sync::Lazy;
 
-use std::any::{Any};
+use std::any::Any;
 use std::collections::HashMap;
 use std::sync::Mutex;
 

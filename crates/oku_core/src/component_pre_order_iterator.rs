@@ -1,15 +1,12 @@
 use crate::reactive::tree::ComponentTreeNode;
 
-
 pub struct ComponentTreePreOrderIterator<'a> {
     stack: Vec<&'a ComponentTreeNode>,
 }
 
 impl<'a> ComponentTreePreOrderIterator<'a> {
     fn new(root: &'a ComponentTreeNode) -> Self {
-        Self {
-            stack: vec![root],
-        }
+        Self { stack: vec![root] }
     }
 }
 

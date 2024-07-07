@@ -1,15 +1,10 @@
-use std::any::Any;
-use std::sync::Arc;
+use crate::elements::element::Element;
 use crate::elements::layout_context::LayoutContext;
 use crate::elements::style::Style;
+use crate::renderer::renderer::Renderer;
 use crate::RenderContext;
 use cosmic_text::FontSystem;
 use taffy::{NodeId, TaffyTree};
-use crate::elements::container::Container;
-use crate::elements::element::Element;
-use crate::events::Message;
-use crate::renderer::renderer::Renderer;
-use crate::widget_id::create_unique_widget_id;
 
 #[derive(Clone, Default, Debug)]
 pub struct Empty {
@@ -36,8 +31,8 @@ impl Element for Empty {
     fn children(&self) -> Vec<Box<dyn Element>> {
         self.children.clone()
     }
-    
-    fn children2<'a>(&'a self) -> Vec<&'a dyn Element> {
+
+    fn children_as_ref<'a>(&'a self) -> Vec<&'a dyn Element> {
         self.children.iter().map(|x| x.as_ref()).collect()
     }
 
@@ -49,11 +44,9 @@ impl Element for Empty {
         "Empty"
     }
 
-    fn draw(&mut self, renderer: &mut Box<dyn Renderer + Send>, render_context: &mut RenderContext) {
-    }
+    fn draw(&mut self, _renderer: &mut Box<dyn Renderer + Send>, _render_context: &mut RenderContext) {}
 
-    fn debug_draw(&mut self, render_context: &mut RenderContext) {
-    }
+    fn debug_draw(&mut self, _render_context: &mut RenderContext) {}
 
     fn compute_layout(&mut self, taffy_tree: &mut TaffyTree<LayoutContext>, font_system: &mut FontSystem) -> NodeId {
         let mut child_nodes: Vec<NodeId> = Vec::with_capacity(self.children().len());
@@ -68,8 +61,7 @@ impl Element for Empty {
         taffy_tree.new_with_children(style, &vec![]).unwrap()
     }
 
-    fn finalize_layout(&mut self, taffy_tree: &mut TaffyTree<LayoutContext>, root_node: NodeId, x: f32, y: f32) {
-    }
+    fn finalize_layout(&mut self, _taffy_tree: &mut TaffyTree<LayoutContext>, _root_node: NodeId, _x: f32, _y: f32) {}
 
     fn computed_style(&self) -> Style {
         Style::default()
@@ -79,12 +71,8 @@ impl Element for Empty {
         &mut self.computed_style
     }
 
-    fn in_bounds(&self, x: f32, y: f32) -> bool {
+    fn in_bounds(&self, _x: f32, _y: f32) -> bool {
         false
-    }
-
-    fn add_update_handler(&mut self, update: Arc<fn(Message, Box<dyn Any>, u64)>) {
-        todo!()
     }
 
     fn id(&self) -> &Option<String> {

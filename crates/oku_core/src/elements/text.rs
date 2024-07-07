@@ -1,17 +1,11 @@
-use std::any::Any;
-use std::sync::Arc;
-use crate::elements::layout_context::{CosmicTextContent, LayoutContext};
 use crate::elements::element::Element;
+use crate::elements::layout_context::{CosmicTextContent, LayoutContext};
 use crate::elements::style::{AlignItems, Display, FlexDirection, JustifyContent, Style, Unit, Weight};
 use crate::renderer::color::Color;
 use crate::renderer::renderer::{Rectangle, Renderer};
 use crate::RenderContext;
 use cosmic_text::{Attrs, Buffer, FontSystem, Metrics};
 use taffy::{NodeId, TaffyTree};
-use tiny_skia::{LineCap, LineJoin, Paint, PathBuilder, Rect};
-use crate::elements::container::Container;
-use crate::events::Message;
-use crate::widget_id::create_unique_widget_id;
 
 #[derive(Clone, Default, Debug)]
 pub struct Text {
@@ -29,8 +23,6 @@ pub struct Text {
     id: Option<String>,
     component_id: u64,
 }
-
-
 
 impl Text {
     pub fn new(text: &str) -> Text {
@@ -58,8 +50,8 @@ impl Element for Text {
     fn children(&self) -> Vec<Box<dyn Element>> {
         Vec::new()
     }
-    
-    fn children2<'a>(&'a self) -> Vec<&'a dyn Element> {
+
+    fn children_as_ref<'a>(&'a self) -> Vec<&'a dyn Element> {
         Vec::new()
     }
 
@@ -70,14 +62,14 @@ impl Element for Text {
     fn name(&self) -> &'static str {
         "Text"
     }
-    
-    fn draw(&mut self, renderer: &mut Box<dyn Renderer + Send>, render_context: &mut RenderContext) {
-        let text_color = cosmic_text::Color::rgba(self.style.color.r_u8(), self.style.color.g_u8(), self.style.color.b_u8(), self.style.color.a_u8());
 
-        /*let mut paint = Paint {
-            anti_alias: false,
-            ..Default::default()
-        };*/
+    fn draw(&mut self, renderer: &mut Box<dyn Renderer + Send>, render_context: &mut RenderContext) {
+        let text_color = cosmic_text::Color::rgba(
+            self.style.color.r_u8(),
+            self.style.color.g_u8(),
+            self.style.color.b_u8(),
+            self.style.color.a_u8(),
+        );
 
         if self.text_buffer.is_none() {
             return;
@@ -87,44 +79,36 @@ impl Element for Text {
         let element_y = self.computed_y();
         let text_buffer = self.text_buffer.as_mut().unwrap();
 
-        //paint.set_color_rgba8(self.style.background.r_u8(), self.style.background.g_u8(), self.style.background.b_u8(), self.style.background.a_u8());
-        renderer.draw_rect(Rectangle::new(self.computed_x, self.computed_y, self.computed_width, self.computed_height), self.style.background);
-        //render_context.canvas.fill_rect(Rect::from_xywh(self.computed_x, self.computed_y, self.computed_width, self.computed_height).unwrap(), &paint, Transform::identity(), None);
+        renderer.draw_rect(
+            Rectangle::new(self.computed_x, self.computed_y, self.computed_width, self.computed_height),
+            self.style.background,
+        );
 
-        text_buffer.draw(&mut render_context.font_system, &mut render_context.swash_cache, text_color, |x, y, w, h, color| {
-            let r = color.r();
-            let g = color.g();
-            let b = color.b();
-            let a = color.a();
-            let a1 = a as f32 / 255.0;
-            let a2 = self.style.color.a / 255.0;
-            let a = (a1 * a2 * 255.0) as u8;
+        text_buffer.draw(
+            &mut render_context.font_system,
+            &mut render_context.swash_cache,
+            text_color,
+            |x, y, w, h, color| {
+                let r = color.r();
+                let g = color.g();
+                let b = color.b();
+                let a = color.a();
+                let a1 = a as f32 / 255.0;
+                let a2 = self.style.color.a / 255.0;
+                let a = (a1 * a2 * 255.0) as u8;
 
-            //paint.set_color_rgba8(r, g, b, a);
+                let p_x: i32 = (element_x + self.computed_padding[3] + x as f32) as i32;
+                let p_y: i32 = (element_y + self.computed_padding[0] + y as f32) as i32;
 
-            let p_x: i32 = (element_x + self.computed_padding[3] + x as f32) as i32;
-            let p_y: i32 = (element_y + self.computed_padding[0] + y as f32) as i32;
-
-            renderer.draw_rect(Rectangle::new(p_x as f32, p_y as f32, w as f32, h as f32), Color::new_from_rgba_u8(r, g, b, a));
-            //render_context.canvas.fill_rect(Rect::from_xywh(p_x as f32, p_y as f32, w as f32, h as f32).unwrap(), &paint, Transform::identity(), None);
-        });
+                renderer.draw_rect(
+                    Rectangle::new(p_x as f32, p_y as f32, w as f32, h as f32),
+                    Color::new_from_rgba_u8(r, g, b, a),
+                );
+            },
+        );
     }
 
-    fn debug_draw(&mut self, render_context: &mut RenderContext) {
-        let mut paint = Paint::default();
-        paint.set_color_rgba8(0, 0, 0, 255);
-        paint.anti_alias = true;
-
-        let mut path_builder = PathBuilder::new();
-        path_builder.push_rect(Rect::from_xywh(self.computed_x, self.computed_y, self.computed_width, self.computed_height).unwrap());
-        path_builder.finish().unwrap();
-
-        //render_context.canvas.stroke_path(&path, &paint, &stroke, Transform::identity(), None);
-
-        for child in self.children.iter_mut() {
-            child.debug_draw(render_context);
-        }
-    }
+    fn debug_draw(&mut self, _render_context: &mut RenderContext) {}
 
     fn compute_layout(&mut self, taffy_tree: &mut TaffyTree<LayoutContext>, font_system: &mut FontSystem) -> NodeId {
         let font_size = self.style.font_size;
@@ -135,7 +119,12 @@ impl Element for Text {
         attrs.weight = cosmic_text::Weight(self.style.font_weight.0);
         let style: taffy::Style = self.style.into();
 
-        taffy_tree.new_leaf_with_context(style, LayoutContext::Text(CosmicTextContent::new(metrics, self.text.as_str(), attrs, font_system))).unwrap()
+        taffy_tree
+            .new_leaf_with_context(
+                style,
+                LayoutContext::Text(CosmicTextContent::new(metrics, self.text.as_str(), attrs, font_system)),
+            )
+            .unwrap()
     }
 
     fn finalize_layout(&mut self, taffy_tree: &mut TaffyTree<LayoutContext>, root_node: NodeId, x: f32, y: f32) {
@@ -164,11 +153,10 @@ impl Element for Text {
     }
 
     fn in_bounds(&self, x: f32, y: f32) -> bool {
-        x >= self.computed_x && x <= self.computed_x + self.computed_width && y >= self.computed_y && y <= self.computed_y + self.computed_height
-    }
-
-    fn add_update_handler(&mut self, update: Arc<fn(Message, Box<dyn Any>, id: u64)>) {
-        todo!()
+        x >= self.computed_x
+            && x <= self.computed_x + self.computed_width
+            && y >= self.computed_y
+            && y <= self.computed_y + self.computed_height
     }
 
     fn id(&self) -> &Option<String> {
@@ -279,6 +267,9 @@ impl Text {
     }
 
     pub fn in_bounds(&self, x: f32, y: f32) -> bool {
-        x >= self.computed_x && x <= self.computed_x + self.computed_width && y >= self.computed_y && y <= self.computed_y + self.computed_height
+        x >= self.computed_x
+            && x <= self.computed_x + self.computed_width
+            && y >= self.computed_y
+            && y <= self.computed_y + self.computed_height
     }
 }
