@@ -14,6 +14,7 @@ use oku::RendererType::Wgpu;
 use oku::{component, oku_main_with_options, OkuOptions};
 use oku_core::elements::image::Image;
 use std::any::Any;
+use std::future::Future;
 use std::path::PathBuf;
 
 pub fn counter(
@@ -22,8 +23,6 @@ pub fn counter(
     id: u64,
 ) -> (ComponentSpecification, Option<UpdateFn>) {
     let count = RUNTIME.get_state(id).unwrap_or("start".to_string());
-    RUNTIME.set_state(id, count.clone() + "1");
-
     (
         ComponentSpecification {
             component: Text::new(format!("Counter Count: {}", count.as_str()).as_str())
@@ -38,7 +37,12 @@ pub fn counter(
     )
 }
 
-pub fn counter_update(_id: u64, _message: Message) {}
+pub fn counter_update(id: u64, _message: Message) -> (bool, Option<Box<dyn Future<Output=Box<dyn Any>>>>) {
+    let count = RUNTIME.get_state(id).unwrap_or("start".to_string());
+    RUNTIME.set_state(id, count.clone() + "1");
+        
+    (true, None)
+}
 
 pub fn app(
     _props: Option<Props>,

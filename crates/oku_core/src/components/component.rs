@@ -1,13 +1,15 @@
 use crate::components::props::Props;
 use crate::elements::element::Element;
 use crate::events::Message;
-use std::any::TypeId;
+use std::any::{Any, TypeId};
+use std::future::Future;
+
 pub type ViewFn = fn(
     props: Option<Props>,
     children: Vec<ComponentSpecification>,
     id: u64,
 ) -> (ComponentSpecification, Option<UpdateFn>);
-pub type UpdateFn = fn(id: u64, message: Message);
+pub type UpdateFn = fn(id: u64, message: Message) -> (bool, Option<Box<dyn Future<Output=Box<dyn Any>>>>);
 
 #[derive(Clone)]
 pub enum ComponentOrElement {

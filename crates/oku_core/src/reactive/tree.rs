@@ -26,24 +26,22 @@ struct TreeVisitorNode {
 
 impl ComponentTreeNode {
     pub fn print_tree(&self) {
-        unsafe {
-            let mut elements: Vec<(*const ComponentTreeNode, usize, bool)> = vec![(self, 0, true)];
-            while let Some((element, indent, is_last)) = elements.pop() {
-                let mut prefix = String::new();
-                for _ in 0..indent {
-                    prefix.push_str("  ");
-                }
-                if is_last {
-                    prefix.push_str("└─");
-                } else {
-                    prefix.push_str("├─");
-                }
-                println!("{} , Tag: {}, Id: {}, Key: {:?}", prefix, (*element).tag, (*element).id, (*element).key);
-                let children = &(*element).children;
-                for (i, child) in children.iter().enumerate().rev() {
-                    let is_last = i == children.len() - 1;
-                    elements.push((child, indent + 1, is_last));
-                }
+        let mut elements: Vec<(&ComponentTreeNode, usize, bool)> = vec![(self, 0, true)];
+        while let Some((element, indent, is_last)) = elements.pop() {
+            let mut prefix = String::new();
+            for _ in 0..indent {
+                prefix.push_str("  ");
+            }
+            if is_last {
+                prefix.push_str("└─");
+            } else {
+                prefix.push_str("├─");
+            }
+            println!("{} , Tag: {}, Id: {}, Key: {:?}", prefix, element.tag, element.id, element.key);
+            let children = &element.children;
+            for (i, child) in children.iter().enumerate().rev() {
+                let is_last = i == children.len() - 1;
+                elements.push((child, indent + 1, is_last));
             }
         }
     }
@@ -203,7 +201,7 @@ pub(crate) fn create_trees_from_render_specification(
                         is_element: false,
                         key: key.clone(),
                         tag: (*new_tag).clone(),
-                        update: None,
+                        update: new_component.1,
                         children: vec![],
                         children_keys: HashMap::new(),
                         id,

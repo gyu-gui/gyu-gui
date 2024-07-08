@@ -30,7 +30,7 @@ use crate::elements::container::Container;
 use crate::elements::element::Element;
 use crate::elements::layout_context::{measure_content, LayoutContext};
 use crate::elements::style::Unit;
-use crate::events::Message;
+use crate::events::{ClickMessage, Message, OkuEvent};
 use crate::reactive::tree::{create_trees_from_render_specification, ComponentTreeNode};
 use crate::renderer::color::Color;
 use crate::renderer::renderer::Renderer;
@@ -224,6 +224,11 @@ impl ApplicationHandler for OkuState {
     }
 }
 
+enum EventStatus {
+    BoundsChecking,
+    Propagating,
+}
+
 impl OkuState {
     fn send_message(&mut self, message: InternalMessage, wait_for_response: bool) {
         let id = self.id;
@@ -350,36 +355,41 @@ async fn async_main(
                             component: Some(app.component_tree.as_ref().unwrap()),
                         };
 
-                        for f in fiber.level_order_iter().collect::<Vec<FiberNode>>().iter().rev() {
-                            if f.element.is_some() && f.component.is_some() {
-                                let element = f.element.unwrap();
-                                let in_bounds = element.in_bounds(app.mouse_position.0, app.mouse_position.1);
-                                if !in_bounds {
-                                    continue;
-                                }
+                        let mut event_status = EventStatus::BoundsChecking;
 
-                                if let Some(update) = f.component.unwrap().update {
-                                    update(f.component.unwrap().id, Message::UserMessage(Box::new(5)));
+                        for fiber_node in fiber.level_order_iter().collect::<Vec<FiberNode>>().iter().rev() {
+                            match event_status {
+                                EventStatus::BoundsChecking => {
+                                    if let Some(element) = fiber_node.element {
+                                        let in_bounds = element.in_bounds(app.mouse_position.0, app.mouse_position.1);
+                                        if in_bounds {
+                                            event_status = EventStatus::Propagating;
+                                        }
+                                    }
                                 }
-
-                                println!(
-                                    "Element: {}, Component: {}",
-                                    f.element.unwrap().name(),
-                                    f.component.unwrap().id
-                                );
-                            } else if f.component.is_some() {
-                                println!("Component: {}", f.component.unwrap().id);
-                                if let Some(update) = f.component.unwrap().update {
-                                    update(f.component.unwrap().id, Message::UserMessage(Box::new(5)));
+                                EventStatus::Propagating => {
+                                    if let Some(component) = fiber_node.component.as_ref() {
+                                        if component.is_element {
+                                            continue;
+                                        }
+                                        if let Some(update_fn) = component.update {
+                                            let event = OkuEvent::Click(ClickMessage {
+                                                mouse_input: MouseInput {
+                                                    device_id: _mouse_input.device_id,
+                                                    state: _mouse_input.state,
+                                                    button: _mouse_input.button,
+                                                },
+                                                x: app.mouse_position.0 as f64,
+                                                y: app.mouse_position.1 as f64,
+                                            });
+                                            let res = update_fn(component.id, Message::OkuMessage(event));
+                                            if res.0 {
+                                                break;
+                                            }
+                                        }
+                                        break;
+                                    }
                                 }
-                            } else if f.element.is_some() {
-                                let element = f.element.unwrap();
-                                let in_bounds = element.in_bounds(app.mouse_position.0, app.mouse_position.1);
-                                if !in_bounds {
-                                    continue;
-                                }
-
-                                println!("Element: {}", f.element.unwrap().name());
                             }
                         }
                     }
