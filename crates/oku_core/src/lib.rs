@@ -356,13 +356,14 @@ async fn async_main(
                         };
 
                         let mut event_status = EventStatus::BoundsChecking;
-
+                        let mut propagating_component_id: u64 = 0;
                         for fiber_node in fiber.level_order_iter().collect::<Vec<FiberNode>>().iter().rev() {
                             match event_status {
                                 EventStatus::BoundsChecking => {
                                     if let Some(element) = fiber_node.element {
                                         let in_bounds = element.in_bounds(app.mouse_position.0, app.mouse_position.1);
                                         if in_bounds {
+                                            propagating_component_id = element.component_id();
                                             event_status = EventStatus::Propagating;
                                         }
                                     }
@@ -372,6 +373,19 @@ async fn async_main(
                                         if component.is_element {
                                             continue;
                                         }
+
+                                        let mut does_component_contain_clicked_element = false;
+                                        for child in component.children.iter() {
+                                            if propagating_component_id == child.id {
+                                                does_component_contain_clicked_element = true;
+                                                break;
+                                            }
+                                        }
+
+                                        if !does_component_contain_clicked_element {
+                                            continue;
+                                        }
+
                                         if let Some(update_fn) = component.update {
                                             let event = OkuEvent::Click(ClickMessage {
                                                 mouse_input: MouseInput {
@@ -387,7 +401,6 @@ async fn async_main(
                                                 break;
                                             }
                                         }
-                                        break;
                                     }
                                 }
                             }
