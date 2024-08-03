@@ -108,7 +108,6 @@ pub(crate) fn create_trees_from_render_specification(
                     let new_tag = element.name().to_string();
 
                     let id = if let Some(old_tag) = old_tag {
-                        println!("Old Tag: {}, New Tag: {}", old_tag, new_tag);
                         if new_tag == old_tag {
                             (*tree_node.old_component_node.unwrap()).id
                         } else {
@@ -127,7 +126,7 @@ pub(crate) fn create_trees_from_render_specification(
 
                     let new_component_node = ComponentTreeNode {
                         is_element: true,
-                        key: None,
+                        key,
                         tag: new_tag,
                         update: None,
                         children: vec![],
@@ -184,7 +183,6 @@ pub(crate) fn create_trees_from_render_specification(
                     let id: u64 = if key.is_some() && children_keys.contains_key(&key.clone().unwrap()) {
                         *(children_keys.get(&key.clone().unwrap()).unwrap())
                     } else if let Some(old_tag) = old_tag {
-                        println!("Old Tag: {}, New Tag: {}", old_tag, new_tag);
                         if *new_tag == old_tag {
                             // If the old tag is the same as the new tag, we can reuse the old id.
                             (*tree_node.old_component_node.unwrap()).id
@@ -232,7 +230,7 @@ pub(crate) fn create_trees_from_render_specification(
                 }
             };
         }
-        println!("-----------------------------------------");
+        /*println!("-----------------------------------------");
         println!("-----------------------------------------");
         println!("old");
         if let Some(old_component_tree) = old_component_tree {
@@ -241,7 +239,7 @@ pub(crate) fn create_trees_from_render_specification(
         println!("new");
         component_tree.print_tree();
         println!("-----------------------------------------");
-        println!("-----------------------------------------");
+        println!("-----------------------------------------");*/
 
         (component_tree, root_element)
     }

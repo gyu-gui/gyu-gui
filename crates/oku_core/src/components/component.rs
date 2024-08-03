@@ -9,7 +9,7 @@ pub type ViewFn = fn(
     children: Vec<ComponentSpecification>,
     id: u64,
 ) -> (ComponentSpecification, Option<UpdateFn>);
-pub type UpdateFn = fn(id: u64, message: Message) -> (bool, Option<Box<dyn Future<Output=Box<dyn Any>>>>);
+pub type UpdateFn = fn(id: u64, message: Message, source_element_id: Option<String>) -> (bool, Option<Box<dyn Future<Output=Box<dyn Any>>>>);
 
 #[derive(Clone)]
 pub enum ComponentOrElement {

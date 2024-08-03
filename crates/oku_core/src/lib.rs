@@ -224,6 +224,7 @@ impl ApplicationHandler for OkuState {
     }
 }
 
+#[derive(Debug)]
 enum EventStatus {
     BoundsChecking,
     Propagating,
@@ -297,8 +298,7 @@ async fn async_main(
                     } else {
                         root.style_mut().height = Unit::Px(renderer.surface_height());
                     }
-
-                    root.print_tree();
+                    
                     root = layout(
                         renderer.surface_width(),
                         renderer.surface_height(),
@@ -349,7 +349,9 @@ async fn async_main(
                 }
                 InternalMessage::MouseInput(_mouse_input) => {
                     {
+                        println!("Click event");
                         let q = app.element_tree.as_ref().unwrap();
+                        app.component_tree.as_ref().unwrap().print_tree();
                         let fiber: FiberNode = FiberNode {
                             element: Some(q.as_ref()),
                             component: Some(app.component_tree.as_ref().unwrap()),
@@ -357,7 +359,16 @@ async fn async_main(
 
                         let mut event_status = EventStatus::BoundsChecking;
                         let mut propagating_component_id: u64 = 0;
+                        let mut source_element_id: Option<String> = None;
                         for fiber_node in fiber.level_order_iter().collect::<Vec<FiberNode>>().iter().rev() {
+                            if let Some(_element) = fiber_node.element {
+                                let in_bounds = _element.in_bounds(app.mouse_position.0, app.mouse_position.1);
+                                println!("Fiber Node - Element: {} - {} - in bounds: {}", _element.name(), _element.component_id(), in_bounds);
+                            }
+                            if let Some(_component) = fiber_node.component {
+                                println!("Fiber Node - Component: {} - {}", _component.tag, _component.id);
+                            }
+                            println!("Event status: {:?}", event_status);
                             match event_status {
                                 EventStatus::BoundsChecking => {
                                     if let Some(element) = fiber_node.element {
@@ -365,6 +376,7 @@ async fn async_main(
                                         if in_bounds {
                                             propagating_component_id = element.component_id();
                                             event_status = EventStatus::Propagating;
+                                            source_element_id = element.id().clone();
                                         }
                                     }
                                 }
@@ -382,9 +394,9 @@ async fn async_main(
                                             }
                                         }
 
-                                        if !does_component_contain_clicked_element {
+                                     /*   if !does_component_contain_clicked_element {
                                             continue;
-                                        }
+                                        }*/
 
                                         if let Some(update_fn) = component.update {
                                             let event = OkuEvent::Click(ClickMessage {
@@ -396,7 +408,8 @@ async fn async_main(
                                                 x: app.mouse_position.0 as f64,
                                                 y: app.mouse_position.1 as f64,
                                             });
-                                            let res = update_fn(component.id, Message::OkuMessage(event));
+                                            println!("Calling update function");
+                                            let res = update_fn(component.id, Message::OkuMessage(event), source_element_id.clone());
                                             if res.0 {
                                                 break;
                                             }
