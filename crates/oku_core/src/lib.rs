@@ -1,6 +1,5 @@
 pub mod application;
-pub mod components;
-pub mod elements;
+pub mod user;
 //mod lib2;
 pub mod renderer;
 mod widget_id;
@@ -8,11 +7,10 @@ mod widget_id;
 mod component_pre_order_iterator;
 pub mod events;
 mod fiber_node;
-pub mod reactive;
 #[cfg(test)]
 mod tests;
 
-use crate::components::component::ComponentSpecification;
+use crate::user::components::component::ComponentSpecification;
 use crate::fiber_node::FiberNode;
 use crate::widget_id::reset_unique_widget_id;
 use cosmic_text::{FontSystem, SwashCache};
@@ -26,12 +24,12 @@ use winit::event_loop::{ActiveEventLoop, ControlFlow, EventLoop};
 use winit::keyboard::{Key, NamedKey};
 use winit::window::{Window, WindowId};
 
-use crate::elements::container::Container;
-use crate::elements::element::Element;
-use crate::elements::layout_context::{measure_content, LayoutContext};
-use crate::elements::style::Unit;
+use crate::user::elements::container::Container;
+use crate::user::elements::element::Element;
+use crate::user::elements::layout_context::{measure_content, LayoutContext};
+use crate::user::elements::style::Unit;
 use crate::events::{ClickMessage, Message, OkuEvent};
-use crate::reactive::tree::{create_trees_from_render_specification, ComponentTreeNode};
+use crate::user::reactive::tree::{create_trees_from_render_specification, ComponentTreeNode};
 use crate::renderer::color::Color;
 use crate::renderer::renderer::Renderer;
 use crate::renderer::softbuffer::SoftwareRenderer;

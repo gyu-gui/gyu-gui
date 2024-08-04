@@ -1,6 +1,6 @@
-use crate::elements::element::{CommonElementData, Element};
-use crate::elements::layout_context::LayoutContext;
-use crate::elements::style::{AlignItems, Display, FlexDirection, JustifyContent, Style, Unit};
+use crate::user::elements::element::{CommonElementData, Element};
+use crate::user::elements::layout_context::LayoutContext;
+use crate::user::elements::style::{AlignItems, Display, FlexDirection, JustifyContent, Style, Unit};
 use crate::renderer::color::Color;
 use crate::renderer::renderer::{Rectangle, Renderer};
 use crate::RenderContext;

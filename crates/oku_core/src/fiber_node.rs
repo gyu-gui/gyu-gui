@@ -1,5 +1,5 @@
-use crate::elements::element::Element;
-use crate::reactive::tree::ComponentTreeNode;
+use crate::user::elements::element::Element;
+use crate::user::reactive::tree::ComponentTreeNode;
 use std::collections::VecDeque;
 
 #[derive(Clone)]

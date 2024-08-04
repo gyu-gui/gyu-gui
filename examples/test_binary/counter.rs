@@ -1,20 +1,17 @@
-use oku::components::component::ComponentOrElement;
-use oku::components::component::ComponentSpecification;
-use oku::components::component::UpdateFn;
-use oku::components::props::Props;
-use oku::elements::container::Container;
-use oku::elements::style::Weight;
-use oku::elements::style::{AlignItems, JustifyContent};
-use oku::elements::style::{FlexDirection, Unit};
-use oku::elements::text::Text;
+use oku::user::components::component::ComponentOrElement;
+use oku::user::components::component::ComponentSpecification;
+use oku::user::components::component::UpdateFn;
+use oku::user::components::props::Props;
+use oku::user::elements::container::Container;
+use oku::user::elements::text::Text;
 use oku::events::Message;
-use oku::reactive::reactive::RUNTIME;
+use oku::user::reactive::reactive::RUNTIME;
 
 use oku::RendererType::Wgpu;
 use oku::{component, oku_main_with_options, OkuOptions};
 use std::any::Any;
 use std::future::Future;
-use oku_core::elements::element::Element;
+use oku_core::user::elements::element::Element;
 use oku_core::events::OkuEvent;
 
 pub fn app(

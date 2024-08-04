@@ -1,5 +1,5 @@
-use crate::components::component::{ComponentOrElement, ComponentSpecification, UpdateFn};
-use crate::elements::element::Element;
+use crate::user::components::component::{ComponentOrElement, ComponentSpecification, UpdateFn};
+use crate::user::elements::element::Element;
 use crate::widget_id::create_unique_widget_id;
 use std::cell::RefCell;
 use std::collections::HashMap;

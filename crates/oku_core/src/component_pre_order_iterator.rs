@@ -1,4 +1,4 @@
-use crate::reactive::tree::ComponentTreeNode;
+use crate::user::reactive::tree::ComponentTreeNode;
 
 pub struct ComponentTreePreOrderIterator<'a> {
     stack: Vec<&'a ComponentTreeNode>,
