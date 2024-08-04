@@ -1,7 +1,7 @@
 ## Run Example:
 
 ```shell
-cargo run --example test_binary
+cargo run --example counter
 ```
 
 ## Run Tests:
