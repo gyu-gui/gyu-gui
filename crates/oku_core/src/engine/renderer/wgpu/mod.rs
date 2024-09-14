@@ -199,7 +199,7 @@ fn generate_default_white_texture(device: &wgpu::Device, queue: &wgpu::Queue) ->
 }
 
 impl<'a> WgpuRenderer<'a> {
-    pub(crate) async fn new(window: Arc<Window>) -> WgpuRenderer<'a> {
+    pub(crate) async fn new(window: Arc<dyn Window>) -> WgpuRenderer<'a> {
         let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
             backends: wgpu::Backends::DX12 | wgpu::Backends::GL,
             ..Default::default()
@@ -209,7 +209,7 @@ impl<'a> WgpuRenderer<'a> {
         let adapter = request_adapter(instance, &surface).await;
         let (device, queue) = request_device_and_queue(&adapter).await;
 
-        let surface_size = window.inner_size();
+        let surface_size = window.surface_size();
         let surface_config =
             create_surface_config(&surface, surface_size.width, surface_size.height, &device, &adapter);
         surface.configure(&device, &surface_config);
@@ -237,8 +237,8 @@ impl<'a> WgpuRenderer<'a> {
         });
 
         let camera = Camera {
-            width: window.inner_size().width as f32,
-            height: window.inner_size().height as f32,
+            width: window.surface_size().width as f32,
+            height: window.surface_size().height as f32,
             z_near: 0.0,
             z_far: 100.0,
         };

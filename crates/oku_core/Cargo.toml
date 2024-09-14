@@ -7,9 +7,9 @@ resolver = "2"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [dependencies]
 
-winit = { git = "https://github.com/rust-windowing/winit", rev = "02a0a91a942e0ea267e4c123c85a9267d914bab9" }
+winit = { git = "https://github.com/rust-windowing/winit", rev = "dfea49f48850670cdfe3dc91949a9f8f2e267a38" }
 tiny-skia = { git = "https://github.com/RazrFalcon/tiny-skia", rev = "eec0a4701a8413759a3dd51b443b8851ce4c546a" }
-softbuffer = { git = "https://github.com/rust-windowing/softbuffer", rev = "e5fa5cd6ad230683eb2fbef128ff37c44a06d243" }
+softbuffer = { git = "https://github.com/rust-windowing/softbuffer", rev = "ad3bd6d2f930391e5840752a0f4514874821d5ea" }
 cosmic-text = { git = "https://github.com/pop-os/cosmic-text", rev = "e16b39f29c84773a05457fe39577a602de27855c" }
 taffy = { git = "https://github.com/DioxusLabs/taffy", rev = "da888af8336c498edd4fcff6d86d68dd685921ec" }
 wgpu = { git = "https://github.com/gfx-rs/wgpu", rev = "7b4cbc26192d6d56a31f8e67769e656a6627b222" }
@@ -21,9 +21,9 @@ dyn-clone = "1.0.17"
 
 # https://crates.io/crates/glam
 # SSE2 is enabled by default on x86_64 targets.
-glam = { version = "0.28.0" }
+glam = { version = "0.29.0" }
 env_logger = { version = "0.11.5" }
-bytemuck = { version = "1.16.3", features = ["derive"] }
+bytemuck = { version = "1.18.0", features = ["derive"] }
 image = { version = "0.25.2", default-features = false, features = ["png", "jpeg"] }
 
 cfg-if = "1.0.0"

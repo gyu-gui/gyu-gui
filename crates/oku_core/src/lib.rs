@@ -17,7 +17,7 @@ use winit::dpi::PhysicalSize;
 use winit::event::{DeviceId, ElementState, KeyEvent, MouseButton, StartCause, WindowEvent};
 use winit::event_loop::{ActiveEventLoop, ControlFlow, EventLoop};
 use winit::keyboard::{Key, NamedKey};
-use winit::window::{Window, WindowId};
+use winit::window::{Window, WindowAttributes, WindowId};
 
 use crate::user::elements::container::Container;
 use crate::user::elements::element::Element;
@@ -35,7 +35,7 @@ const WAIT_TIME: time::Duration = time::Duration::from_millis(100);
 
 struct App {
     app: ComponentSpecification,
-    window: Option<Arc<Window>>,
+    window: Option<Arc<dyn Window>>,
     renderer: Option<Box<dyn Renderer + Send>>,
     renderer_context: Option<RenderContext>,
     element_tree: Option<Box<dyn Element>>,
@@ -54,7 +54,7 @@ struct OkuState {
     request_redraw: bool,
     wait_cancelled: bool,
     close_requested: bool,
-    window: Option<Arc<Window>>,
+    window: Option<Arc<dyn Window>>,
     app_to_winit_rx: mpsc::Receiver<(u64, InternalMessage)>,
     winit_to_app_tx: mpsc::Sender<(u64, bool, InternalMessage)>,
     oku_options: OkuOptions,
@@ -77,7 +77,7 @@ enum InternalMessage {
     RequestRedraw,
     Close,
     Confirmation,
-    Resume(Arc<Window>, Option<Box<dyn Renderer + Send>>),
+    Resume(Arc<dyn Window>, Option<Box<dyn Renderer + Send>>),
     Resize(PhysicalSize<u32>),
     MouseInput(MouseInput),
     MouseMoved(MouseMoved),
@@ -127,13 +127,13 @@ pub fn oku_main_with_options(application: ComponentSpecification, options: Optio
 }
 
 impl ApplicationHandler for OkuState {
-    fn new_events(&mut self, _event_loop: &ActiveEventLoop, cause: StartCause) {
+    fn new_events(&mut self, _event_loop: &dyn ActiveEventLoop, cause: StartCause) {
         self.wait_cancelled = matches!(cause, StartCause::WaitCancelled { .. })
     }
 
-    fn can_create_surfaces(&mut self, event_loop: &ActiveEventLoop) {
-        let window_attributes = Window::default_attributes().with_title("oku");
-        let window = Arc::new(event_loop.create_window(window_attributes).unwrap());
+    fn can_create_surfaces(&mut self, event_loop: &dyn ActiveEventLoop) {
+        let window_attributes = WindowAttributes::default().with_title("oku");
+        let window: Arc<dyn Window> = Arc::from(event_loop.create_window(window_attributes).unwrap());
         self.window = Some(window.clone());
 
         let renderer: Box<dyn Renderer + Send> = match self.oku_options.renderer {
@@ -144,7 +144,7 @@ impl ApplicationHandler for OkuState {
         self.send_message(InternalMessage::Resume(window, Some(renderer)), true);
     }
 
-    fn window_event(&mut self, _event_loop: &ActiveEventLoop, _window_id: WindowId, event: WindowEvent) {
+    fn window_event(&mut self, _event_loop: &dyn ActiveEventLoop, _window_id: WindowId, event: WindowEvent) {
         match event {
             WindowEvent::CloseRequested => {
                 self.send_message(InternalMessage::Close, true);
@@ -180,7 +180,7 @@ impl ApplicationHandler for OkuState {
                     true,
                 );
             }
-            WindowEvent::Resized(new_size) => {
+            WindowEvent::SurfaceResized(new_size) => {
                 self.send_message(InternalMessage::Resize(new_size), true);
             }
             WindowEvent::KeyboardInput {
@@ -204,7 +204,7 @@ impl ApplicationHandler for OkuState {
         }
     }
 
-    fn about_to_wait(&mut self, event_loop: &ActiveEventLoop) {
+    fn about_to_wait(&mut self, event_loop: &dyn ActiveEventLoop) {
         if self.request_redraw && !self.wait_cancelled && !self.close_requested {
             //self.window.as_ref().unwrap().request_redraw();
         }

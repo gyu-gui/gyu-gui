@@ -10,7 +10,7 @@ pub struct SoftwareRenderer {
     render_commands: Vec<RenderCommand>,
 
     // Surface
-    surface: softbuffer::Surface<Arc<Window>, Arc<Window>>,
+    surface: softbuffer::Surface<Arc<dyn Window>, Arc<dyn Window>>,
     surface_width: f32,
     surface_height: f32,
     surface_clear_color: Color,
@@ -18,9 +18,9 @@ pub struct SoftwareRenderer {
 }
 
 impl SoftwareRenderer {
-    pub(crate) fn new(window: Arc<Window>) -> Self {
-        let width = window.inner_size().width as f32;
-        let height = window.inner_size().height as f32;
+    pub(crate) fn new(window: Arc<dyn Window>) -> Self {
+        let width = window.surface_size().width as f32;
+        let height = window.surface_size().height as f32;
 
         let context = softbuffer::Context::new(window.clone()).unwrap();
         let mut surface = softbuffer::Surface::new(&context, window.clone()).unwrap();
@@ -110,7 +110,7 @@ impl Renderer for SoftwareRenderer {
 }
 
 impl SoftwareRenderer {
-    fn copy_skia_buffer_to_softbuffer(&mut self, width: f32, height: f32) -> Buffer<Arc<Window>, Arc<Window>> {
+    fn copy_skia_buffer_to_softbuffer(&mut self, width: f32, height: f32) -> Buffer<Arc<dyn Window>, Arc<dyn Window>> {
         let mut buffer = self.surface.buffer_mut().unwrap();
         for y in 0..height as u32 {
             for x in 0..width as u32 {
