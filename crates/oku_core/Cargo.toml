@@ -12,7 +12,7 @@ tiny-skia = { git = "https://github.com/RazrFalcon/tiny-skia", rev = "eec0a4701a
 softbuffer = { git = "https://github.com/rust-windowing/softbuffer", rev = "ad3bd6d2f930391e5840752a0f4514874821d5ea" }
 cosmic-text = { git = "https://github.com/pop-os/cosmic-text", rev = "e16b39f29c84773a05457fe39577a602de27855c" }
 taffy = { git = "https://github.com/DioxusLabs/taffy", rev = "da888af8336c498edd4fcff6d86d68dd685921ec" }
-wgpu = { git = "https://github.com/gfx-rs/wgpu", rev = "7b4cbc26192d6d56a31f8e67769e656a6627b222" }
+wgpu = { git = "https://github.com/gfx-rs/wgpu", rev = "eb18854b46a4d6c973a1981be6739ec19282f2f3" }
 accesskit = "0.16.0"
 #accesskit_winit = { version = "0.18.0" }
 

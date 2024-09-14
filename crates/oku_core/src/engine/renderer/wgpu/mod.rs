@@ -595,8 +595,8 @@ impl Renderer for WgpuRenderer<'_> {
                 {
                     _render_pass.set_pipeline(&self.rectangle_render_pipeline);
 
-                    _render_pass.set_bind_group(0, bind_groups.get(index).unwrap(), &[]);
-                    _render_pass.set_bind_group(1, &self.camera_bind_group, &[]);
+                    _render_pass.set_bind_group(0, Some(&bind_groups[index]), &[]);
+                    _render_pass.set_bind_group(1, Some(&self.camera_bind_group), &[]);
                     _render_pass.set_vertex_buffer(0, vertex_buffers.get(index).unwrap().slice(..));
                     _render_pass
                         .set_index_buffer(index_buffers.get(index).unwrap().slice(..), wgpu::IndexFormat::Uint32);
