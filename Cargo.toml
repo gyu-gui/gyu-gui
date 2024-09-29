@@ -11,6 +11,10 @@ oku_dylib = { path = "crates/oku_dylib", default-features = false, optional = tr
 oku_core = { path = "crates/oku_core", default-features = false }
 rand = "0.9.0-alpha.1"
 
+[dev-dependencies]
+tracing = "0.1.40"
+tracing-subscriber = "0.3.18"
+
 [workspace]
 resolver = "2"
 
@@ -21,8 +25,12 @@ members = [
 
 [[example]]
 name = "counter"
-path = "examples/test_binary/counter.rs"
+path = "examples/counter/counter.rs"
 
 [[example]]
 name = "accordion"
 path = "examples/accordion/accordion.rs"
+
+[[example]]
+name = "request"
+path = "examples/request/request.rs"

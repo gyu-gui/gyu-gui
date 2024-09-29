@@ -3,13 +3,23 @@ use crate::user::elements::element::Element;
 use crate::engine::events::Message;
 use std::any::{Any, TypeId};
 use std::future::Future;
+use std::pin::Pin;
+use std::sync::Arc;
 
 pub type ViewFn = fn(
     props: Option<Props>,
     children: Vec<ComponentSpecification>,
     id: u64,
 ) -> (ComponentSpecification, Option<UpdateFn>);
-pub type UpdateFn = fn(id: u64, message: Message, source_element_id: Option<String>) -> (bool, Option<Box<dyn Future<Output=Box<dyn Any>>>>);
+
+
+#[derive(Default)]
+pub struct UpdateResult {
+    pub propagate: bool,
+    pub result: Option<Arc<dyn Future<Output = Box<dyn Any + Send + 'static>> + Send + Sync>>
+}
+
+pub type UpdateFn = fn(id: u64, message: Message, source_element_id: Option<String>) -> UpdateResult;
 
 #[derive(Clone)]
 pub enum ComponentOrElement {

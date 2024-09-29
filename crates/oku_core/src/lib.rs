@@ -5,13 +5,20 @@ mod tests;
 pub mod engine;
 mod platform;
 
-use crate::user::components::component::ComponentSpecification;
+use std::any::Any;
+use std::collections::VecDeque;
+use std::fmt::{Display, Formatter};
+use std::future::Future;
+use std::pin::Pin;
+use crate::user::components::component::{ComponentSpecification, UpdateFn, UpdateResult};
 use user::reactive::fiber_node::FiberNode;
 use user::reactive::element_id::reset_unique_element_id;
 use cosmic_text::{FontSystem, SwashCache};
 use std::sync::Arc;
 use std::time;
 use tokio::sync::mpsc;
+use tokio::sync::mpsc::Sender;
+use tracing::info;
 use winit::application::ApplicationHandler;
 use winit::dpi::PhysicalSize;
 use winit::event::{DeviceId, ElementState, KeyEvent, MouseButton, StartCause, WindowEvent};
@@ -41,6 +48,7 @@ struct App {
     element_tree: Option<Box<dyn Element>>,
     component_tree: Option<ComponentTreeNode>,
     mouse_position: (f32, f32),
+    update_queue: VecDeque<(UpdateFn, UpdateResult)>,
 }
 
 pub struct RenderContext {
@@ -88,11 +96,20 @@ pub struct OkuOptions {
     pub renderer: RendererType,
 }
 
-#[derive(Default)]
+#[derive(Default, Copy, Clone, Debug)]
 pub enum RendererType {
     Software,
     #[default]
     Wgpu,
+}
+
+impl Display for RendererType {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            RendererType::Software => write!(f, "software(tiny-skia)"),
+            RendererType::Wgpu => write!(f, "wgpu"),
+        }
+    }
 }
 
 pub fn oku_main(application: ComponentSpecification) {
@@ -100,9 +117,15 @@ pub fn oku_main(application: ComponentSpecification) {
 }
 
 pub fn oku_main_with_options(application: ComponentSpecification, options: Option<OkuOptions>) {
-    let rt = create_native_runtime();
+    info!("Oku started");
+    
+    let rt = create_native_runtime().expect("Failed to creat async runtime.");
+    
+    info!("Created async runtime");
 
-    let event_loop = EventLoop::new().expect("Failed to create winit event loop");
+    let event_loop = EventLoop::new().expect("Failed to create winit event loop.");
+    
+    info!("Created winit event loop");
 
     let (winit_to_app_tx, winit_to_app_rx) = mpsc::channel::<(u64, bool, InternalMessage)>(100);
     let (app_to_winit_tx, app_to_winit_rx) = mpsc::channel::<(u64, InternalMessage)>(100);
@@ -133,13 +156,19 @@ impl ApplicationHandler for OkuState {
 
     fn can_create_surfaces(&mut self, event_loop: &dyn ActiveEventLoop) {
         let window_attributes = WindowAttributes::default().with_title("oku");
-        let window: Arc<dyn Window> = Arc::from(event_loop.create_window(window_attributes).unwrap());
+        let window: Arc<dyn Window> = Arc::from(event_loop.create_window(window_attributes).expect("Failed to create window."));
+        info!("Created window");
+        
         self.window = Some(window.clone());
 
+        info!("Using {} renderer.", self.oku_options.renderer);
+        
         let renderer: Box<dyn Renderer + Send> = match self.oku_options.renderer {
             RendererType::Software => Box::new(SoftwareRenderer::new(window.clone())) as Box<dyn Renderer + Send>,
             RendererType::Wgpu => Box::new(self.rt.block_on(async { WgpuRenderer::new(window.clone()).await })),
         };
+        
+        info!("Created renderer");
 
         self.send_message(InternalMessage::Resume(window, Some(renderer)), true);
     }
@@ -261,171 +290,202 @@ async fn async_main(
         element_tree: None,
         component_tree: None,
         mouse_position: (0.0, 0.0),
+        update_queue: VecDeque::new(),
     });
 
+    info!("starting main event loop");
     loop {
         if let Some((id, wait_for_response, msg)) = rx.recv().await {
             match msg {
                 InternalMessage::RequestRedraw => {
-                    let renderer = app.renderer.as_mut().unwrap();
-
-                    renderer.surface_set_clear_color(Color::new_from_rgba_u8(255, 255, 255, 255));
-
-                    let window_element = Container::new().into();
-                    let old_component_tree = app.component_tree.as_ref();
-                    let new_tree =
-                        create_trees_from_render_specification(app.app.clone(), window_element, old_component_tree);
-                    app.component_tree = Some(new_tree.0);
-
-                    let mut root = new_tree.1;
-
-                    root.style_mut().width = Unit::Percentage(renderer.surface_width());
-
-                    let is_user_root_height_auto = {
-                        let root_children = root.children_mut();
-                        root_children[0].children()[0].style().height.is_auto()
-                    };
-
-                    root.children_mut()[0].style_mut().width = Unit::Px(renderer.surface_width());
-
-                    if is_user_root_height_auto {
-                        root.style_mut().height = Unit::Auto;
-                    } else {
-                        root.style_mut().height = Unit::Px(renderer.surface_height());
-                    }
-
-                    root = layout(
-                        renderer.surface_width(),
-                        renderer.surface_height(),
-                        app.renderer_context.as_mut().unwrap(),
-                        &mut root,
-                    );
-                    root.draw(renderer, app.renderer_context.as_mut().unwrap());
-                    app.element_tree = Some(root);
-
-                    renderer.submit();
-                    send_response(id, wait_for_response, &tx).await;
+                    on_request_redraw(&tx, &mut app, id, wait_for_response).await;
                 }
                 InternalMessage::Close => {
+                    info!("Closing");
                     send_response(id, wait_for_response, &tx).await;
                     break;
                 }
                 InternalMessage::Confirmation => {}
                 InternalMessage::Resume(window, renderer) => {
-                    if app.element_tree.is_none() {
-                        reset_unique_element_id();
-                        //let new_view = app.app.view();
-                        //app.element_tree = Some(new_view);
-                    }
-
-                    if app.renderer_context.is_none() {
-                        let font_system = FontSystem::new();
-                        let swash_cache = SwashCache::new();
-                        let renderer_context = RenderContext {
-                            font_system,
-                            swash_cache,
-                        };
-                        app.renderer_context = Some(renderer_context);
-                    }
-
-                    app.window = Some(window.clone());
-                    app.renderer = renderer;
-
-                    send_response(id, wait_for_response, &tx).await;
+                    on_resume(&tx, &mut app, id, wait_for_response, window, renderer).await;
                 }
                 InternalMessage::Resize(new_size) => {
-                    let renderer = app.renderer.as_mut().unwrap();
-                    renderer.resize_surface(new_size.width.max(1) as f32, new_size.height.max(1) as f32);
-
-                    // On macOS the window needs to be redrawn manually after resizing
-                    app.window.as_ref().unwrap().request_redraw();
-
-                    send_response(id, wait_for_response, &tx).await;
+                    on_resize(&tx, &mut app, id, wait_for_response, new_size).await;
                 }
                 InternalMessage::MouseInput(_mouse_input) => {
-                    {
-                        println!("Click event");
-                        let q = app.element_tree.as_ref().unwrap();
-                        app.component_tree.as_ref().unwrap().print_tree();
-                        let fiber: FiberNode = FiberNode {
-                            element: Some(q.as_ref()),
-                            component: Some(app.component_tree.as_ref().unwrap()),
-                        };
-
-                        let mut event_status = EventStatus::BoundsChecking;
-                        let mut target_component_id: Option<u64> = None;
-                        let mut target_element_id: Option<String> = None;
-                        for fiber_node in fiber.level_order_iter().collect::<Vec<FiberNode>>().iter().rev() {
-                            if let Some(_element) = fiber_node.element {
-                                let in_bounds = _element.in_bounds(app.mouse_position.0, app.mouse_position.1);
-                                println!(
-                                    "Fiber Node - Element: {} - {} - in bounds: {}",
-                                    _element.name(),
-                                    _element.component_id(),
-                                    in_bounds
-                                );
-                            }
-                            if let Some(_component) = fiber_node.component {
-                                println!("Fiber Node - Component: {} - {}", _component.tag, _component.id);
-                            }
-                            println!("Event status: {:?}", event_status);
-                            if let Some(element) = fiber_node.element {
-                                let in_bounds = element.in_bounds(app.mouse_position.0, app.mouse_position.1);
-                                if in_bounds {
-                                    target_component_id = Some(element.component_id());
-                                    event_status = EventStatus::Propagating;
-                                    target_element_id = element.id().clone();
-                                    break;
-                                }
-                            }
-                        }
-                        if let Some(target_component_id) = target_component_id {
-                            println!("Target component id: {}", target_component_id);
-
-                            // Do a pre-order traversal of the component tree to find the target component
-                            let target_component = app.component_tree.as_ref().unwrap().pre_order_iter().find(|node| node.id == target_component_id).unwrap();
-                            let mut to_visit = Some(target_component);
-
-                            while let Some(node) = to_visit {
-                                if let Some(update_fn) = node.update {
-                                    let event = OkuEvent::Click(ClickMessage {
-                                        mouse_input: MouseInput {
-                                            device_id: _mouse_input.device_id,
-                                            state: _mouse_input.state,
-                                            button: _mouse_input.button,
-                                        },
-                                        x: app.mouse_position.0 as f64,
-                                        y: app.mouse_position.1 as f64,
-                                    });
-                                    println!("Calling update function");
-                                    let res = update_fn(node.id, Message::OkuMessage(event), target_element_id.clone());
-                                    if res.0 {
-                                        break;
-                                    }
-                                }
-
-                                if node.parent_id.is_none() {
-                                    to_visit = None;
-                                } else {
-                                    let parent_id = node.parent_id.unwrap();
-                                    to_visit = app.component_tree.as_ref().unwrap().pre_order_iter().find(|node2| { 
-                                        node2.id == parent_id
-                                    });
-                                }
-                            }
-                        }
-                    }
-
-                    app.window.as_ref().unwrap().request_redraw();
-                    send_response(id, wait_for_response, &tx).await;
+                    on_mouse_input(&tx, &mut app, id, wait_for_response, _mouse_input).await;
                 }
                 InternalMessage::MouseMoved(mouse_moved) => {
-                    app.mouse_position = (mouse_moved.position.0 as f32, mouse_moved.position.1 as f32);
-                    send_response(id, wait_for_response, &tx).await;
+                    on_mouse_move(&tx, &mut app, id, wait_for_response, mouse_moved).await;
                 }
             }
         }
     }
+}
+
+async fn on_mouse_move(tx: &Sender<(u64, InternalMessage)>, app: &mut Box<App>, id: u64, wait_for_response: bool, mouse_moved: MouseMoved) {
+    app.mouse_position = (mouse_moved.position.0 as f32, mouse_moved.position.1 as f32);
+    send_response(id, wait_for_response, &tx).await;
+}
+
+async fn on_resize(tx: &Sender<(u64, InternalMessage)>, app: &mut Box<App>, id: u64, wait_for_response: bool, new_size: PhysicalSize<u32>) {
+    let renderer = app.renderer.as_mut().unwrap();
+    renderer.resize_surface(new_size.width.max(1) as f32, new_size.height.max(1) as f32);
+
+    // On macOS the window needs to be redrawn manually after resizing
+    app.window.as_ref().unwrap().request_redraw();
+
+    send_response(id, wait_for_response, &tx).await;
+}
+
+async fn on_mouse_input(tx: &Sender<(u64, InternalMessage)>, mut app: &mut Box<App>, id: u64, wait_for_response: bool, _mouse_input: MouseInput) {
+    {
+        let current_element_tree = if let Some(current_element_tree) = app.element_tree.as_ref() {
+            current_element_tree
+        } else {
+            send_response(id, wait_for_response, tx).await;
+            return;
+        };
+        
+        app.component_tree.as_ref().unwrap().print_tree();
+        let fiber: FiberNode = FiberNode {
+            element: Some(current_element_tree.as_ref()),
+            component: Some(app.component_tree.as_ref().unwrap()),
+        };
+
+        let mut event_status = EventStatus::BoundsChecking;
+        let mut target_component_id: Option<u64> = None;
+        let mut target_element_id: Option<String> = None;
+        for fiber_node in fiber.level_order_iter().collect::<Vec<FiberNode>>().iter().rev() {
+            if let Some(_element) = fiber_node.element {
+                let in_bounds = _element.in_bounds(app.mouse_position.0, app.mouse_position.1);
+                println!(
+                    "Fiber Node - Element: {} - {} - in bounds: {}",
+                    _element.name(),
+                    _element.component_id(),
+                    in_bounds
+                );
+            }
+            if let Some(_component) = fiber_node.component {
+                println!("Fiber Node - Component: {} - {}", _component.tag, _component.id);
+            }
+            println!("Event status: {:?}", event_status);
+            if let Some(element) = fiber_node.element {
+                let in_bounds = element.in_bounds(app.mouse_position.0, app.mouse_position.1);
+                if in_bounds {
+                    target_component_id = Some(element.component_id());
+                    event_status = EventStatus::Propagating;
+                    target_element_id = element.id().clone();
+                    break;
+                }
+            }
+        }
+        if let Some(target_component_id) = target_component_id {
+
+            // Do a pre-order traversal of the component tree to find the target component
+            let target_component = app.component_tree.as_ref().unwrap().pre_order_iter().find(|node| node.id == target_component_id).unwrap();
+            let mut to_visit = Some(target_component);
+
+            while let Some(node) = to_visit {
+                if let Some(update_fn) = node.update {
+                    let event = OkuEvent::Click(ClickMessage {
+                        mouse_input: MouseInput {
+                            device_id: _mouse_input.device_id,
+                            state: _mouse_input.state,
+                            button: _mouse_input.button,
+                        },
+                        x: app.mouse_position.0 as f64,
+                        y: app.mouse_position.1 as f64,
+                    });
+
+                    let res = update_fn(node.id, Message::OkuMessage(event), target_element_id.clone());
+                    let propagate = res.propagate;
+                    {
+                        app.update_queue.push_back((update_fn, res));
+                    }
+                    if propagate {
+                        break;
+                    }
+                }
+
+                if node.parent_id.is_none() {
+                    to_visit = None;
+                } else {
+                    let parent_id = node.parent_id.unwrap();
+                    to_visit = app.component_tree.as_ref().unwrap().pre_order_iter().find(|node2| {
+                        node2.id == parent_id
+                    });
+                }
+            }
+        }
+    }
+
+    app.window.as_ref().unwrap().request_redraw();
+    send_response(id, wait_for_response, tx).await;
+}
+
+async fn on_resume(tx: &Sender<(u64, InternalMessage)>, app: &mut Box<App>, id: u64, wait_for_response: bool, window: Arc<dyn Window>, renderer: Option<Box<dyn Renderer + Send>>) {
+    if app.element_tree.is_none() {
+        reset_unique_element_id();
+        //let new_view = app.app.view();
+        //app.element_tree = Some(new_view);
+    }
+
+    if app.renderer_context.is_none() {
+        let font_system = FontSystem::new();
+        let swash_cache = SwashCache::new();
+        let renderer_context = RenderContext {
+            font_system,
+            swash_cache,
+        };
+        app.renderer_context = Some(renderer_context);
+    }
+
+    app.window = Some(window.clone());
+    app.renderer = renderer;
+
+    send_response(id, wait_for_response, &tx).await;
+}
+
+async fn on_request_redraw(tx: &Sender<(u64, InternalMessage)>, app: &mut Box<App>, id: u64, wait_for_response: bool) {
+    let renderer = app.renderer.as_mut().unwrap();
+
+    renderer.surface_set_clear_color(Color::new_from_rgba_u8(255, 255, 255, 255));
+
+    let window_element = Container::new().into();
+    let old_component_tree = app.component_tree.as_ref();
+    let new_tree =
+        create_trees_from_render_specification(app.app.clone(), window_element, old_component_tree);
+    app.component_tree = Some(new_tree.0);
+
+    let mut root = new_tree.1;
+
+    root.style_mut().width = Unit::Percentage(renderer.surface_width());
+
+    let is_user_root_height_auto = {
+        let root_children = root.children_mut();
+        root_children[0].children()[0].style().height.is_auto()
+    };
+
+    root.children_mut()[0].style_mut().width = Unit::Px(renderer.surface_width());
+
+    if is_user_root_height_auto {
+        root.style_mut().height = Unit::Auto;
+    } else {
+        root.style_mut().height = Unit::Px(renderer.surface_height());
+    }
+
+    root = layout(
+        renderer.surface_width(),
+        renderer.surface_height(),
+        app.renderer_context.as_mut().unwrap(),
+        &mut root,
+    );
+    root.draw(renderer, app.renderer_context.as_mut().unwrap());
+    app.element_tree = Some(root);
+
+    renderer.submit();
+    send_response(id, wait_for_response, &tx).await;
 }
 
 fn layout(
