@@ -16,7 +16,7 @@ pub type ViewFn = fn(
 #[derive(Default)]
 pub struct UpdateResult {
     pub propagate: bool,
-    pub result: Option<Arc<dyn Future<Output = Box<dyn Any + Send + 'static>> + Send + Sync>>
+    pub result: Option<Pin<Box<dyn Future<Output = Box<dyn Any + Send>> + Send>>>
 }
 
 pub type UpdateFn = fn(id: u64, message: Message, source_element_id: Option<String>) -> UpdateResult;

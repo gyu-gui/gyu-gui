@@ -66,15 +66,23 @@ fn counter_update(id: u64, message: Message, source_element: Option<String>) -> 
         Message::OkuMessage(oku_message) => match oku_message {
             OkuEvent::Click(click_message) => counter + 1,
         },
+        Message::UserMessage(user_message) => {
+            if let Ok(boxed_i32) = user_message.downcast::<i32>() {
+                println!("Got user event");
+                *boxed_i32
+            } else {
+                -1
+            }
+        },
         _ => counter,
     };
     RUNTIME.set_state(id, new_counter);
     println!("Counter: {}", new_counter);
     UpdateResult {
         propagate: true,
-        result: Some(Arc::new(async {
+        result: Some(Box::pin(async {
             let boxed: Box<dyn Any + Send> = Box::new(3_i32);
-            
+
             boxed
         })),
     }
@@ -84,7 +92,7 @@ fn main() {
     tracing_subscriber::fmt()
         .with_max_level(tracing::Level::INFO) // Set the maximum log level you want to capture
         .init();
-    
+
     oku_main_with_options(
         ComponentSpecification {
             component: Container::new().into(),

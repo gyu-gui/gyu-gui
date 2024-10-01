@@ -1,24 +1,26 @@
 pub mod user;
 
-#[cfg(test)]
-mod tests;
 pub mod engine;
 mod platform;
+#[cfg(test)]
+mod tests;
 
+use crate::user::components::component::{ComponentSpecification, UpdateFn, UpdateResult};
+use cosmic_text::{FontSystem, SwashCache};
 use std::any::Any;
 use std::collections::VecDeque;
 use std::fmt::{Display, Formatter};
 use std::future::Future;
+use std::ops::Deref;
 use std::pin::Pin;
-use crate::user::components::component::{ComponentSpecification, UpdateFn, UpdateResult};
-use user::reactive::fiber_node::FiberNode;
-use user::reactive::element_id::reset_unique_element_id;
-use cosmic_text::{FontSystem, SwashCache};
 use std::sync::Arc;
 use std::time;
+use tokio::pin;
 use tokio::sync::mpsc;
 use tokio::sync::mpsc::Sender;
 use tracing::info;
+use user::reactive::element_id::reset_unique_element_id;
+use user::reactive::fiber_node::FiberNode;
 use winit::application::ApplicationHandler;
 use winit::dpi::PhysicalSize;
 use winit::event::{DeviceId, ElementState, KeyEvent, MouseButton, StartCause, WindowEvent};
@@ -26,17 +28,17 @@ use winit::event_loop::{ActiveEventLoop, ControlFlow, EventLoop};
 use winit::keyboard::{Key, NamedKey};
 use winit::window::{Window, WindowAttributes, WindowId};
 
+use crate::platform::runtimes::native::create_native_runtime;
 use crate::user::elements::container::Container;
 use crate::user::elements::element::Element;
-use crate::user::elements::layout_context::{LayoutContext, measure_content};
+use crate::user::elements::layout_context::{measure_content, LayoutContext};
 use crate::user::elements::style::Unit;
+use crate::user::reactive::tree::{create_trees_from_render_specification, ComponentTreeNode};
 use engine::events::{ClickMessage, Message, OkuEvent};
-use crate::user::reactive::tree::{ComponentTreeNode, create_trees_from_render_specification};
 use engine::renderer::color::Color;
 use engine::renderer::renderer::Renderer;
 use engine::renderer::softbuffer::SoftwareRenderer;
 use engine::renderer::wgpu::WgpuRenderer;
-use crate::platform::runtimes::native::create_native_runtime;
 
 const WAIT_TIME: time::Duration = time::Duration::from_millis(100);
 
@@ -48,7 +50,7 @@ struct App {
     element_tree: Option<Box<dyn Element>>,
     component_tree: Option<ComponentTreeNode>,
     mouse_position: (f32, f32),
-    update_queue: VecDeque<(UpdateFn, UpdateResult)>,
+    update_queue: VecDeque<(u64, Option<String>, UpdateFn, UpdateResult)>,
 }
 
 pub struct RenderContext {
@@ -89,6 +91,7 @@ enum InternalMessage {
     Resize(PhysicalSize<u32>),
     MouseInput(MouseInput),
     MouseMoved(MouseMoved),
+    ProcessUserEvents,
 }
 
 #[derive(Default)]
@@ -118,13 +121,13 @@ pub fn oku_main(application: ComponentSpecification) {
 
 pub fn oku_main_with_options(application: ComponentSpecification, options: Option<OkuOptions>) {
     info!("Oku started");
-    
+
     let rt = create_native_runtime().expect("Failed to creat async runtime.");
-    
+
     info!("Created async runtime");
 
     let event_loop = EventLoop::new().expect("Failed to create winit event loop.");
-    
+
     info!("Created winit event loop");
 
     let (winit_to_app_tx, winit_to_app_rx) = mpsc::channel::<(u64, bool, InternalMessage)>(100);
@@ -156,18 +159,19 @@ impl ApplicationHandler for OkuState {
 
     fn can_create_surfaces(&mut self, event_loop: &dyn ActiveEventLoop) {
         let window_attributes = WindowAttributes::default().with_title("oku");
-        let window: Arc<dyn Window> = Arc::from(event_loop.create_window(window_attributes).expect("Failed to create window."));
+        let window: Arc<dyn Window> =
+            Arc::from(event_loop.create_window(window_attributes).expect("Failed to create window."));
         info!("Created window");
-        
+
         self.window = Some(window.clone());
 
         info!("Using {} renderer.", self.oku_options.renderer);
-        
+
         let renderer: Box<dyn Renderer + Send> = match self.oku_options.renderer {
             RendererType::Software => Box::new(SoftwareRenderer::new(window.clone())) as Box<dyn Renderer + Send>,
             RendererType::Wgpu => Box::new(self.rt.block_on(async { WgpuRenderer::new(window.clone()).await })),
         };
-        
+
         info!("Created renderer");
 
         self.send_message(InternalMessage::Resume(window, Some(renderer)), true);
@@ -238,11 +242,15 @@ impl ApplicationHandler for OkuState {
             //self.window.as_ref().unwrap().request_redraw();
         }
 
+        self.send_message(InternalMessage::ProcessUserEvents, false);
+
         if !self.wait_cancelled {
             event_loop.set_control_flow(ControlFlow::WaitUntil(time::Instant::now() + WAIT_TIME));
         }
 
         if self.close_requested {
+            info!("Exiting winit event loop");
+
             event_loop.exit();
         }
     }
@@ -318,17 +326,46 @@ async fn async_main(
                 InternalMessage::MouseMoved(mouse_moved) => {
                     on_mouse_move(&tx, &mut app, id, wait_for_response, mouse_moved).await;
                 }
+                InternalMessage::ProcessUserEvents => {
+                    if app.update_queue.is_empty() {
+                        continue;
+                    }
+                    
+                    for event in app.update_queue.drain(..) {
+                        let x = event.3.result.unwrap();
+                        println!("spawning async work");
+                        tokio::spawn(async move { 
+                            let y = x.await;
+                            let q = event.2;
+                            println!("calling!");
+                            q(event.0, Message::UserMessage(y), event.1);
+                        });
+                    }
+                    app.window.as_ref().unwrap().request_redraw();
+                }
             }
         }
     }
 }
 
-async fn on_mouse_move(tx: &Sender<(u64, InternalMessage)>, app: &mut Box<App>, id: u64, wait_for_response: bool, mouse_moved: MouseMoved) {
+async fn on_mouse_move(
+    tx: &Sender<(u64, InternalMessage)>,
+    app: &mut Box<App>,
+    id: u64,
+    wait_for_response: bool,
+    mouse_moved: MouseMoved,
+) {
     app.mouse_position = (mouse_moved.position.0 as f32, mouse_moved.position.1 as f32);
     send_response(id, wait_for_response, &tx).await;
 }
 
-async fn on_resize(tx: &Sender<(u64, InternalMessage)>, app: &mut Box<App>, id: u64, wait_for_response: bool, new_size: PhysicalSize<u32>) {
+async fn on_resize(
+    tx: &Sender<(u64, InternalMessage)>,
+    app: &mut Box<App>,
+    id: u64,
+    wait_for_response: bool,
+    new_size: PhysicalSize<u32>,
+) {
     let renderer = app.renderer.as_mut().unwrap();
     renderer.resize_surface(new_size.width.max(1) as f32, new_size.height.max(1) as f32);
 
@@ -338,7 +375,13 @@ async fn on_resize(tx: &Sender<(u64, InternalMessage)>, app: &mut Box<App>, id: 
     send_response(id, wait_for_response, &tx).await;
 }
 
-async fn on_mouse_input(tx: &Sender<(u64, InternalMessage)>, mut app: &mut Box<App>, id: u64, wait_for_response: bool, _mouse_input: MouseInput) {
+async fn on_mouse_input(
+    tx: &Sender<(u64, InternalMessage)>,
+    mut app: &mut Box<App>,
+    id: u64,
+    wait_for_response: bool,
+    _mouse_input: MouseInput,
+) {
     {
         let current_element_tree = if let Some(current_element_tree) = app.element_tree.as_ref() {
             current_element_tree
@@ -346,7 +389,7 @@ async fn on_mouse_input(tx: &Sender<(u64, InternalMessage)>, mut app: &mut Box<A
             send_response(id, wait_for_response, tx).await;
             return;
         };
-        
+
         app.component_tree.as_ref().unwrap().print_tree();
         let fiber: FiberNode = FiberNode {
             element: Some(current_element_tree.as_ref()),
@@ -381,9 +424,14 @@ async fn on_mouse_input(tx: &Sender<(u64, InternalMessage)>, mut app: &mut Box<A
             }
         }
         if let Some(target_component_id) = target_component_id {
-
             // Do a pre-order traversal of the component tree to find the target component
-            let target_component = app.component_tree.as_ref().unwrap().pre_order_iter().find(|node| node.id == target_component_id).unwrap();
+            let target_component = app
+                .component_tree
+                .as_ref()
+                .unwrap()
+                .pre_order_iter()
+                .find(|node| node.id == target_component_id)
+                .unwrap();
             let mut to_visit = Some(target_component);
 
             while let Some(node) = to_visit {
@@ -401,7 +449,7 @@ async fn on_mouse_input(tx: &Sender<(u64, InternalMessage)>, mut app: &mut Box<A
                     let res = update_fn(node.id, Message::OkuMessage(event), target_element_id.clone());
                     let propagate = res.propagate;
                     {
-                        app.update_queue.push_back((update_fn, res));
+                        app.update_queue.push_back((node.id, target_element_id.clone(), update_fn, res));
                     }
                     if propagate {
                         break;
@@ -412,9 +460,8 @@ async fn on_mouse_input(tx: &Sender<(u64, InternalMessage)>, mut app: &mut Box<A
                     to_visit = None;
                 } else {
                     let parent_id = node.parent_id.unwrap();
-                    to_visit = app.component_tree.as_ref().unwrap().pre_order_iter().find(|node2| {
-                        node2.id == parent_id
-                    });
+                    to_visit =
+                        app.component_tree.as_ref().unwrap().pre_order_iter().find(|node2| node2.id == parent_id);
                 }
             }
         }
@@ -424,7 +471,14 @@ async fn on_mouse_input(tx: &Sender<(u64, InternalMessage)>, mut app: &mut Box<A
     send_response(id, wait_for_response, tx).await;
 }
 
-async fn on_resume(tx: &Sender<(u64, InternalMessage)>, app: &mut Box<App>, id: u64, wait_for_response: bool, window: Arc<dyn Window>, renderer: Option<Box<dyn Renderer + Send>>) {
+async fn on_resume(
+    tx: &Sender<(u64, InternalMessage)>,
+    app: &mut Box<App>,
+    id: u64,
+    wait_for_response: bool,
+    window: Arc<dyn Window>,
+    renderer: Option<Box<dyn Renderer + Send>>,
+) {
     if app.element_tree.is_none() {
         reset_unique_element_id();
         //let new_view = app.app.view();
@@ -454,8 +508,7 @@ async fn on_request_redraw(tx: &Sender<(u64, InternalMessage)>, app: &mut Box<Ap
 
     let window_element = Container::new().into();
     let old_component_tree = app.component_tree.as_ref();
-    let new_tree =
-        create_trees_from_render_specification(app.app.clone(), window_element, old_component_tree);
+    let new_tree = create_trees_from_render_specification(app.app.clone(), window_element, old_component_tree);
     app.component_tree = Some(new_tree.0);
 
     let mut root = new_tree.1;
@@ -475,12 +528,8 @@ async fn on_request_redraw(tx: &Sender<(u64, InternalMessage)>, app: &mut Box<Ap
         root.style_mut().height = Unit::Px(renderer.surface_height());
     }
 
-    root = layout(
-        renderer.surface_width(),
-        renderer.surface_height(),
-        app.renderer_context.as_mut().unwrap(),
-        &mut root,
-    );
+    root =
+        layout(renderer.surface_width(), renderer.surface_height(), app.renderer_context.as_mut().unwrap(), &mut root);
     root.draw(renderer, app.renderer_context.as_mut().unwrap());
     app.element_tree = Some(root);
 
