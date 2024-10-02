@@ -81,6 +81,17 @@ fn counter_update(id: u64, message: Message, source_element: Option<String>) -> 
     UpdateResult {
         propagate: true,
         result: Some(Box::pin(async {
+            
+            let foo = async {
+                1
+            };
+
+            let bar = async {
+                1
+            };
+            
+            let car = tokio::join!(foo, bar);
+            
             let boxed: Box<dyn Any + Send> = Box::new(3_i32);
 
             boxed

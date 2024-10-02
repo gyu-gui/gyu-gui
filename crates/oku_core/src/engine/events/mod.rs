@@ -1,3 +1,5 @@
+pub mod update_queue_entry;
+
 use crate::MouseInput;
 use std::any::Any;
 

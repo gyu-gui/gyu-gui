@@ -1479,6 +1479,7 @@ dependencies = [
  "oku_core",
  "oku_dylib",
  "rand",
+ "tokio",
  "tracing",
  "tracing-subscriber",
 ]

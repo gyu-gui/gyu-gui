@@ -34,6 +34,7 @@ use crate::user::elements::element::Element;
 use crate::user::elements::layout_context::{measure_content, LayoutContext};
 use crate::user::elements::style::Unit;
 use crate::user::reactive::tree::{create_trees_from_render_specification, ComponentTreeNode};
+use crate::engine::events::update_queue_entry::UpdateQueueEntry;
 use engine::events::{ClickMessage, Message, OkuEvent};
 use engine::renderer::color::Color;
 use engine::renderer::renderer::Renderer;
@@ -50,7 +51,7 @@ struct App {
     element_tree: Option<Box<dyn Element>>,
     component_tree: Option<ComponentTreeNode>,
     mouse_position: (f32, f32),
-    update_queue: VecDeque<(u64, Option<String>, UpdateFn, UpdateResult)>,
+    update_queue: VecDeque<UpdateQueueEntry>,
 }
 
 pub struct RenderContext {
@@ -332,13 +333,9 @@ async fn async_main(
                     }
                     
                     for event in app.update_queue.drain(..) {
-                        let x = event.3.result.unwrap();
-                        println!("spawning async work");
-                        tokio::spawn(async move { 
-                            let y = x.await;
-                            let q = event.2;
-                            println!("calling!");
-                            q(event.0, Message::UserMessage(y), event.1);
+                        tokio::spawn(async move {
+                            let update_result = event.update_result.result.unwrap();;
+                            (event.update_function)(event.source_component, Message::UserMessage(update_result.await), event.source_element);
                         });
                     }
                     app.window.as_ref().unwrap().request_redraw();
@@ -448,9 +445,7 @@ async fn on_mouse_input(
 
                     let res = update_fn(node.id, Message::OkuMessage(event), target_element_id.clone());
                     let propagate = res.propagate;
-                    {
-                        app.update_queue.push_back((node.id, target_element_id.clone(), update_fn, res));
-                    }
+                    app.update_queue.push_back(UpdateQueueEntry::new(node.id, target_element_id.clone(), update_fn, res));
                     if propagate {
                         break;
                     }
