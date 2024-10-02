@@ -17,6 +17,7 @@ use std::future::Future;
 use std::pin::Pin;
 use bytes::Bytes;
 use std::sync::Arc;
+use oku_core::PinnedFutureAny;
 use oku_core::user::elements::image::Image;
 
 pub fn app(
@@ -69,9 +70,8 @@ fn counter_update(id: u64, message: Message, source_element: Option<String>) -> 
     if source_element.as_deref() != Some("increment") {
         return UpdateResult::default();
     }
-
-    let counter = RUNTIME.get_state(id).unwrap_or(0);
-    let res: Option<Pin<Box<dyn Future<Output = Box<dyn Any + Send>> + Send>>> = match message {
+    
+    let res: Option<PinnedFutureAny> = match message {
         Message::OkuMessage(oku_message) => match oku_message {
             OkuEvent::Click(click_message) => {
                 Some(Box::pin(async {

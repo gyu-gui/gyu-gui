@@ -46,6 +46,8 @@ const WAIT_TIME: time::Duration = time::Duration::from_millis(100);
 pub use tokio::spawn;
 pub use tokio::join;
 
+pub type PinnedFutureAny = Pin<Box<dyn Future<Output = Box<dyn Any + Send>> + Send>>;
+
 struct App {
     app: ComponentSpecification,
     window: Option<Arc<dyn Window>>,

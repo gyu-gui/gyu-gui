@@ -5,6 +5,7 @@ use std::any::{Any, TypeId};
 use std::future::Future;
 use std::pin::Pin;
 use std::sync::Arc;
+use crate::PinnedFutureAny;
 
 pub type ViewFn = fn(
     props: Option<Props>,
@@ -16,7 +17,7 @@ pub type ViewFn = fn(
 #[derive(Default)]
 pub struct UpdateResult {
     pub propagate: bool,
-    pub result: Option<Pin<Box<dyn Future<Output = Box<dyn Any + Send>> + Send>>>
+    pub result: Option<PinnedFutureAny>
 }
 
 pub type UpdateFn = fn(id: u64, message: Message, source_element_id: Option<String>) -> UpdateResult;
