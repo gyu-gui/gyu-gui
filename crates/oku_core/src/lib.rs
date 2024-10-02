@@ -43,6 +43,9 @@ use engine::renderer::wgpu::WgpuRenderer;
 
 const WAIT_TIME: time::Duration = time::Duration::from_millis(100);
 
+pub use tokio::spawn;
+pub use tokio::join;
+
 struct App {
     app: ComponentSpecification,
     window: Option<Arc<dyn Window>>,
