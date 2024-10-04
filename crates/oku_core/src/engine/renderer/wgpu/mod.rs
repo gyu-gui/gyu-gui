@@ -1,14 +1,15 @@
+mod texture;
+
 use crate::engine::renderer::color::Color;
 use crate::engine::renderer::renderer::{Rectangle, Renderer};
 use glam;
-use image::codecs::png::PngEncoder;
-use image::{ExtendedColorType, GenericImageView, ImageEncoder};
+use image::{GenericImageView, ImageEncoder};
 use std::collections::HashMap;
-use std::io::Cursor;
 use std::sync::Arc;
 use wgpu::util::DeviceExt;
 use wgpu::{CompositeAlphaMode, PresentMode};
 use winit::window::Window;
+use crate::engine::renderer::wgpu::texture::Texture;
 
 pub struct WgpuRenderer<'a> {
     device: wgpu::Device,
@@ -34,79 +35,6 @@ struct RectangleBatch {
     texture_path: Option<String>,
     rectangle_vertices: Vec<Vertex>,
     rectangle_indices: Vec<u32>,
-}
-
-pub struct Texture {
-    pub texture: wgpu::Texture,
-    pub view: wgpu::TextureView,
-    pub sampler: wgpu::Sampler,
-}
-
-impl Texture {
-    pub fn from_bytes(device: &wgpu::Device, queue: &wgpu::Queue, bytes: &[u8], label: &str) -> Option<Self> {
-        let img = image::load_from_memory(bytes);
-        Self::from_image(device, queue, &img.unwrap(), Some(label))
-    }
-
-    pub fn from_image(
-        device: &wgpu::Device,
-        queue: &wgpu::Queue,
-        img: &image::DynamicImage,
-        label: Option<&str>,
-    ) -> Option<Self> {
-        let rgba = img.to_rgba8();
-        let dimensions = img.dimensions();
-
-        let size = wgpu::Extent3d {
-            width: dimensions.0,
-            height: dimensions.1,
-            depth_or_array_layers: 1,
-        };
-        let format = wgpu::TextureFormat::Rgba8UnormSrgb;
-        let texture = device.create_texture(&wgpu::TextureDescriptor {
-            label,
-            size,
-            mip_level_count: 1,
-            sample_count: 1,
-            dimension: wgpu::TextureDimension::D2,
-            format,
-            usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
-            view_formats: &[],
-        });
-
-        queue.write_texture(
-            wgpu::ImageCopyTexture {
-                aspect: wgpu::TextureAspect::All,
-                texture: &texture,
-                mip_level: 0,
-                origin: wgpu::Origin3d::ZERO,
-            },
-            &rgba,
-            wgpu::ImageDataLayout {
-                offset: 0,
-                bytes_per_row: Some(4 * dimensions.0),
-                rows_per_image: Some(dimensions.1),
-            },
-            size,
-        );
-
-        let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
-        let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
-            address_mode_u: wgpu::AddressMode::ClampToEdge,
-            address_mode_v: wgpu::AddressMode::ClampToEdge,
-            address_mode_w: wgpu::AddressMode::ClampToEdge,
-            mag_filter: wgpu::FilterMode::Linear,
-            min_filter: wgpu::FilterMode::Nearest,
-            mipmap_filter: wgpu::FilterMode::Nearest,
-            ..Default::default()
-        });
-
-        Some(Self {
-            texture,
-            view,
-            sampler,
-        })
-    }
 }
 
 async fn request_adapter(instance: wgpu::Instance, surface: &wgpu::Surface<'_>) -> wgpu::Adapter {
@@ -180,22 +108,6 @@ fn bind_group_from_2d_texture(
         ],
         label: Some("oku_bind_group"),
     })
-}
-
-fn generate_default_white_texture(device: &wgpu::Device, queue: &wgpu::Queue) -> Texture {
-    let white_pixel = image::Rgba([255, 255, 255, 255]);
-    let image_buffer = image::ImageBuffer::from_pixel(1, 1, white_pixel);
-
-    let mut cursor = Cursor::new(Vec::new());
-    let encoder = PngEncoder::new(&mut cursor);
-
-    // Encode the image as a PNG and write the image bytes into our cursor.
-    encoder
-        .write_image(image_buffer.as_raw(), 1, 1, ExtendedColorType::Rgba8)
-        .expect("Failed to create a default texture");
-
-    Texture::from_bytes(device, queue, cursor.get_mut().as_slice(), "1x1_white_texture")
-        .expect("Failed to create the default texture")
 }
 
 impl<'a> WgpuRenderer<'a> {
@@ -330,7 +242,7 @@ impl<'a> WgpuRenderer<'a> {
             cache: None,
         });
 
-        let default_texture = generate_default_white_texture(&device, &queue);
+        let default_texture = Texture::generate_default_white_texture(&device, &queue);
 
         WgpuRenderer {
             device,
@@ -556,6 +468,9 @@ impl Renderer for WgpuRenderer<'_> {
                     contents: bytemuck::cast_slice(&batch.rectangle_indices),
                     usage: wgpu::BufferUsages::INDEX,
                 });
+                
+                // Don't cache the textures for now.
+                self.textures.clear();
 
                 vertex_buffers.push(vertex_buffer);
                 index_buffers.push(index_buffer);
@@ -594,12 +509,10 @@ impl Renderer for WgpuRenderer<'_> {
             for (index, batch) in self.rectangle_batch.iter_mut().enumerate() {
                 {
                     _render_pass.set_pipeline(&self.rectangle_render_pipeline);
-
                     _render_pass.set_bind_group(0, Some(&bind_groups[index]), &[]);
                     _render_pass.set_bind_group(1, Some(&self.camera_bind_group), &[]);
                     _render_pass.set_vertex_buffer(0, vertex_buffers.get(index).unwrap().slice(..));
-                    _render_pass
-                        .set_index_buffer(index_buffers.get(index).unwrap().slice(..), wgpu::IndexFormat::Uint32);
+                    _render_pass.set_index_buffer(index_buffers.get(index).unwrap().slice(..), wgpu::IndexFormat::Uint32);
                     _render_pass.draw_indexed(0..(batch.rectangle_indices.len() as u32), 0, 0..1);
                 }
             }
