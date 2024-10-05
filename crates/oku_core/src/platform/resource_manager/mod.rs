@@ -2,7 +2,10 @@ mod image;
 
 use std::sync::Arc;
 use chrono::{DateTime, Utc};
+use once_cell::sync::Lazy;
 use tokio::sync::RwLock;
+use crate::platform::resource_manager::image::ImageResource;
+use crate::user::reactive::reactive::Runtime;
 
 struct ResourceData  {
     path: Option<String>,
@@ -10,15 +13,42 @@ struct ResourceData  {
     data: Option<Vec<u8>>
 }
 
-trait Resource {
-    
-    fn path(&self) -> Option<String>;
-    
-    fn expiration_time(&self) -> Option<DateTime<Utc>>;
-    
-    fn data(&self) -> Option<&[u8]>;
+enum Resource {
+    Image(ImageResource)
 }
 
-struct ResourceManager {
-    pub resources: Vec<RwLock<Arc<dyn Resource>>>,
+impl Resource {
+    
+    pub fn path(&self) -> Option<String> {
+        match self {
+            Resource::Image(data) => {
+                data.common_data.path.clone()
+            }
+        }
+    }
+
+    pub fn data(&self) -> Option<&[u8]> {
+        match self {
+            Resource::Image(data) => {
+                data.common_data.data.as_deref()
+            }
+        }
+    }
+    
 }
+
+pub struct ResourceManager {
+    pub resources: Vec<RwLock<Arc<Resource>>>,
+}
+
+impl ResourceManager {
+    
+    pub fn new() -> Self {
+        ResourceManager {
+            resources: vec![],
+        }
+    }
+    
+}
+
+pub static RESOURCE_MANAGER: Lazy<ResourceManager> = Lazy::new(ResourceManager::new);
