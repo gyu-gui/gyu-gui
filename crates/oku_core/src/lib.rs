@@ -451,7 +451,9 @@ async fn on_mouse_input(
 
                     let res = update_fn(node.id, Message::OkuMessage(event), target_element_id.clone());
                     let propagate = res.propagate;
-                    app.update_queue.push_back(UpdateQueueEntry::new(node.id, target_element_id.clone(), update_fn, res));
+                    if res.result.is_some() {
+                        app.update_queue.push_back(UpdateQueueEntry::new(node.id, target_element_id.clone(), update_fn, res));   
+                    }
                     if propagate {
                         break;
                     }
