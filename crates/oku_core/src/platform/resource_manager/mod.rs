@@ -32,11 +32,11 @@ impl ResourceData {
 
                     let res = reqwest::get("https://picsum.photos/800").await;
                     let bytes = res.unwrap().bytes().await.ok();
-                    let boxed: Box<Resource> = Box::new(Default::default());
+                    //let boxed: Box<Resource> = Box::new(Default::default());
 
-                    boxed
+                    //boxed
                 }));
-                RESOURCE_MANAGER.add_job(a);
+                //RESOURCE_MANAGER.add_job(a);
             }
             ResourceIdentifier::File(file) => {}
         }
@@ -100,10 +100,10 @@ impl ResourceManager{
     }
 
     pub async fn add_job(&mut self, job: ResourceFuture) {
-        async move {
+        /*async move {
             let mut write_lock = self.state.write().await;
             *write_lock.resource_jobs.push_back(job);
-        }
+        }*/
     }
 
 }
