@@ -56,7 +56,6 @@ impl Component for Counter {
     }
 
     fn update(state: &mut Self, id: u64, message: Message, source_element: Option<String>) -> UpdateResult {
-        println!("WORKING...");
         if source_element.as_deref() != Some("increment") {
             return UpdateResult::default();
         }

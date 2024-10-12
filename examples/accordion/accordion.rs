@@ -1,75 +1,107 @@
-mod accordion_component;
-
-use oku::user::components::component::ComponentOrElement;
 use oku::user::components::component::ComponentSpecification;
-use oku::user::components::component::UpdateFn;
 use oku::user::components::props::Props;
 use oku::user::elements::container::Container;
 use oku::user::elements::text::Text;
 
 use oku::RendererType::Wgpu;
-use oku::{component, oku_main_with_options, OkuOptions};
-use std::any::Any;
-use crate::accordion_component::{accordion, accordion_content, accordion_header};
+use oku::{oku_main_with_options, OkuOptions};
 
-pub fn app(
-    _props: Option<Props>,
-    _children: Vec<ComponentSpecification>,
-    _id: u64,
-) -> (ComponentSpecification, Option<UpdateFn>) {
+use oku_core::engine::events::{Message, OkuEvent};
+use oku_core::user::components::component::{Component, UpdateResult};
+use oku_core::user::elements::element::Element;
+use oku_core::user::elements::style::FlexDirection;
 
-    /*
-    <accordion>
-        <accordion_header>
-            Text("Header")
-        </accordion_header>
+#[derive(Default, Copy, Clone)]
+pub struct Accordion {
+    show_content: bool,
+}
 
-        <accordion_content>
-            Text("Content")
-        </accordion_content>
-    </accordion>
-    */
+impl Component for Accordion {
+    fn view(state: &Self, _props: Option<Props>, _children: Vec<ComponentSpecification>, id: u64) -> ComponentSpecification {
+        let mut accordion_header = Container::new();
+        accordion_header.set_id(Some("accordion_header".to_string()));
 
-    let root = ComponentSpecification {
-        component: Container::new().into(),
-        key: None,
-        props: None,
-        children: vec![
+        let mut accordion_header_text = Text::new("Accordion Example");
+        accordion_header_text.set_id(Some("accordion_header".to_string()));
+
+        let accordion_content = if state.show_content {
             ComponentSpecification {
-                component: component!(accordion),
+                component: Text::new("My content!").into(),
                 key: None,
                 props: None,
-                children: vec![
-                    ComponentSpecification {
-                        component: component!(accordion_header),
-                        key: None,
-                        props: None,
-                        children: vec![
-                            Text::new("Header").font_size(24.0).into()
-                        ],
-                    },
-                    ComponentSpecification {
-                        component: component!(accordion_content),
-                        key: None,
-                        props: None,
-                        children: vec![
-                            Text::new("Content").font_size(16.0).into()
-                        ],
-                    },
-                ],
-            },
-        ],
-    };
-    (root, None)
+                children: vec![],
+            }
+        } else {
+            ComponentSpecification {
+                component: Container::new().into(),
+                key: None,
+                props: None,
+                children: vec![],
+            }
+        };
+
+        ComponentSpecification {
+            component: Container::new().margin(14.0, 0.0, 0.0, 14.0).flex_direction(FlexDirection::Column).into(),
+            key: Some("accordion container".to_string()),
+            props: None,
+            children: vec![
+                ComponentSpecification {
+                    component: accordion_header.into(),
+                    key: Some("accordion_header".to_string()),
+                    props: None,
+                    children: vec![
+                        ComponentSpecification {
+                            component: accordion_header_text.into(),
+                            key: None,
+                            props: None,
+                            children: vec![],
+                        },
+                    ],
+                },
+                accordion_content
+            ],
+        }
+    }
+
+    fn update(state: &mut Self, id: u64, message: Message, source_element: Option<String>) -> UpdateResult {
+        println!("{:?}", source_element.clone().as_deref());
+        if source_element.as_deref() != Some("accordion_header") {
+            return UpdateResult::default();
+        }
+
+        if let Message::OkuMessage(OkuEvent::Click(click_message)) = message {
+            state.show_content = !state.show_content
+        };
+
+        UpdateResult::new(true, None)
+    }
 }
 
 fn main() {
+
+    tracing_subscriber::fmt()
+        .with_max_level(tracing::Level::TRACE) // Set the maximum log level you want to capture
+        .init();
+
     oku_main_with_options(
         ComponentSpecification {
-            component: component!(app),
+            component: Container::new().into(),
             key: None,
             props: None,
-            children: vec![],
+            children: vec![
+                ComponentSpecification {
+                    component: Accordion::component(),
+                    key: None,
+                    props: None,
+                    children: vec![],
+                },
+                ComponentSpecification {
+                    component: Accordion::component(),
+                    key: None,
+                    props: None,
+                    children: vec![],
+                },
+            ],
         },
         Some(OkuOptions { renderer: Wgpu }),
     );
