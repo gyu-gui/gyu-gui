@@ -55,7 +55,7 @@ pub(crate) fn create_trees_from_render_specification(
     component_specification: ComponentSpecification,
     mut root_element: Box<dyn Element>,
     old_component_tree: Option<&ComponentTreeNode>,
-    user_state: &mut HashMap<u64, Box<dyn Any + Send>>
+    user_state: &mut HashMap<u64, Option<Box<dyn Any + Send>>>
 ) -> (ComponentTreeNode, Box<dyn Element>) {
     println!("-----------------------------------------");
     unsafe {
@@ -115,10 +115,10 @@ pub(crate) fn create_trees_from_render_specification(
                         if new_tag == old_tag {
                             (*tree_node.old_component_node.unwrap()).id
                         } else {
-                            create_unique_element_id()
+                            create_unique_element_id(user_state)
                         }
                     } else {
-                        create_unique_element_id()
+                        create_unique_element_id(user_state)
                     };
 
                     element.set_component_id(id);
@@ -192,14 +192,25 @@ pub(crate) fn create_trees_from_render_specification(
                             // If the old tag is the same as the new tag, we can reuse the old id.
                             (*tree_node.old_component_node.unwrap()).id
                         } else {
-                            create_unique_element_id()
+                            create_unique_element_id(user_state)
                         }
                     } else {
-                        create_unique_element_id()
+                        create_unique_element_id(user_state)
                     };
 
                     let state = user_state.get(&id);
-                    let new_component = component_spec(state.map(|f| f.as_ref() as &dyn Any), props, children, id);
+                    if state.is_none() {
+                        panic!("{id} is None!");
+                    }
+                    let x = state.unwrap();
+                    let y: Option<&dyn Any> = match x {
+                        None => {None}
+                        Some(data) => {
+                            Some(data.as_ref())
+                        }
+                    };
+                    
+                    let new_component = component_spec(y, props, children, id);
 
                     let new_component_node = ComponentTreeNode {
                         is_element: false,

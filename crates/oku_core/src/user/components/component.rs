@@ -30,7 +30,7 @@ impl UpdateResult {
    }
 }
 
-pub type UpdateFn = fn(id: u64, message: Message, source_element_id: Option<String>) -> UpdateResult;
+pub type UpdateFn = fn(state: &mut Option<Box<dyn Any + Send>>, id: u64, message: Message, source_element_id: Option<String>) -> UpdateResult;
 
 #[derive(Clone)]
 pub enum ComponentOrElement {
@@ -58,14 +58,6 @@ where
     State: Clone + Send + Sized + 'static,
 {
     fn view(&self, props: Option<Props>, children: Vec<ComponentSpecification>, id: u64) -> ComponentSpecification;
-
-    /*    fn get_state(&self) -> Option<State> {
-            RUNTIME.get_state(0)
-        }
-
-        fn set_state(&self, value: State) {
-            RUNTIME.set_state(0, value);
-        }
-    */
+    
     fn update(&self, id: u64, message: crate::engine::events::Message);
 }

@@ -21,7 +21,7 @@ pub fn app(
     _children: Vec<ComponentSpecification>,
     id: u64,
 ) -> (ComponentSpecification, Option<UpdateFn>) {
-    let counter: i32 = match state {
+    let counter: u32 = match state {
         Some(state) => {
             *state.downcast_ref().unwrap()
         },
@@ -65,12 +65,20 @@ pub fn app(
     (root, Some(counter_update))
 }
 
-fn counter_update(id: u64, message: Message, source_element: Option<String>) -> UpdateResult {
+fn counter_update(state: &mut Option<Box<dyn Any + Send>>, id: u64, message: Message, source_element: Option<String>) -> UpdateResult {
     if source_element.as_deref() != Some("increment") {
         return UpdateResult::default();
     }
 
-    let counter = 0;
+    let counter: u32 = match state {
+        Some(state) => {
+            *state.downcast_mut::<u32>().unwrap()
+        }
+        None => {
+            0
+        }
+    };
+    
     let new_counter = match message {
         Message::OkuMessage(oku_message) => {
             match oku_message {
@@ -79,7 +87,9 @@ fn counter_update(id: u64, message: Message, source_element: Option<String>) -> 
         },
         _ => counter,
     };
-    //RUNTIME.set_state(id, new_counter);
+
+    *state = Some(Box::new(counter + 1));
+
     println!("Counter: {}", new_counter);
     UpdateResult::new(true, None)
 }

@@ -57,7 +57,7 @@ struct App {
     component_tree: Option<ComponentTreeNode>,
     mouse_position: (f32, f32),
     update_queue: VecDeque<UpdateQueueEntry>,
-    user_state: HashMap<u64, Box<dyn Any + Send>>
+    user_state: HashMap<u64, Option<Box<dyn Any + Send>>>
 }
 
 pub struct RenderContext {
@@ -99,6 +99,7 @@ enum InternalMessage {
     MouseInput(MouseInput),
     MouseMoved(MouseMoved),
     ProcessUserEvents,
+    GotUserMessage((UpdateFn, u64, Option<String>, Box<dyn Any + Send>))
 }
 
 #[derive(Default)]
@@ -140,8 +141,9 @@ pub fn oku_main_with_options(application: ComponentSpecification, options: Optio
     let (winit_to_app_tx, winit_to_app_rx) = mpsc::channel::<(u64, bool, InternalMessage)>(100);
     let (app_to_winit_tx, app_to_winit_rx) = mpsc::channel::<(u64, InternalMessage)>(100);
 
+    let x = winit_to_app_tx.clone();
     rt.spawn(async move {
-        async_main(application, winit_to_app_rx, app_to_winit_tx).await;
+        async_main(application, winit_to_app_rx, app_to_winit_tx, x).await;
     });
 
     let mut app = OkuState {
@@ -152,7 +154,7 @@ pub fn oku_main_with_options(application: ComponentSpecification, options: Optio
         close_requested: false,
         window: None,
         app_to_winit_rx,
-        winit_to_app_tx,
+        winit_to_app_tx: winit_to_app_tx.clone(),
         oku_options: options.unwrap_or_default(),
     };
 
@@ -296,7 +298,10 @@ async fn async_main(
     application: ComponentSpecification,
     mut rx: mpsc::Receiver<(u64, bool, InternalMessage)>,
     tx: mpsc::Sender<(u64, InternalMessage)>,
+    app_tx: mpsc::Sender<(u64, bool, InternalMessage)>
 ) {
+    let mut user_state = HashMap::new();
+    user_state.insert(0, None);
     let mut app = Box::new(App {
         app: application,
         window: None,
@@ -306,7 +311,7 @@ async fn async_main(
         component_tree: None,
         mouse_position: (0.0, 0.0),
         update_queue: VecDeque::new(),
-        user_state: Default::default(),
+        user_state,
     });
 
     info!("starting main event loop");
@@ -340,13 +345,22 @@ async fn async_main(
                     }
                     
                     for event in app.update_queue.drain(..) {
-                        let w = app.window.clone();
+                        let tx = app_tx.clone();
                         tokio::spawn(async move {
                             let update_result = event.update_result.result.unwrap();
-                            (event.update_function)(event.source_component, Message::UserMessage(update_result.await), event.source_element);
-                            w.as_ref().unwrap().request_redraw();
+                            let res = update_result.await;
+                            tx.send((0, false, InternalMessage::GotUserMessage((event.update_function, event.source_component, event.source_element, res)))).await.expect("send failed");
                         });
                     }
+                },
+                InternalMessage::GotUserMessage(message) => {
+                    let update_fn = message.0;
+                    let source_component = message.1;
+                    let source_element = message.2;
+                    let message = message.3;
+                    let state = app.user_state.get_mut(&source_component).unwrap();
+                    update_fn(state, source_component, Message::UserMessage(message), source_element);
+                    app.window.as_ref().unwrap().request_redraw();
                 }
             }
         }
@@ -450,11 +464,12 @@ async fn on_mouse_input(
                         x: app.mouse_position.0 as f64,
                         y: app.mouse_position.1 as f64,
                     });
-
-                    let res = update_fn(node.id, Message::OkuMessage(event), target_element_id.clone());
+                    
+                    let state = app.user_state.get_mut(&node.id).unwrap();
+                    let res = update_fn(state, node.id, Message::OkuMessage(event), target_element_id.clone());
                     let propagate = res.propagate;
                     if res.result.is_some() {
-                        app.update_queue.push_back(UpdateQueueEntry::new(node.id, target_element_id.clone(), update_fn, res));   
+                        app.update_queue.push_back(UpdateQueueEntry::new(node.id, target_element_id.clone(), update_fn, res));
                     }
                     if propagate {
                         break;
