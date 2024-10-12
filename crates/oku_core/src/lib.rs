@@ -467,7 +467,7 @@ async fn on_mouse_input(
                         y: app.mouse_position.1 as f64,
                     });
                     
-                    let state = app.user_state.get_mut(&node.id).unwrap();
+                    let state = app.user_state.get_mut(&node.id).unwrap().as_mut();
                     let res = update_fn(state, node.id, Message::OkuMessage(event), target_element_id.clone());
                     let propagate = res.propagate;
                     if res.result.is_some() {

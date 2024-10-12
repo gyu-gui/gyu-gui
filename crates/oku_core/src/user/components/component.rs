@@ -12,7 +12,7 @@ pub type ViewFn = fn(
     props: Option<Props>,
     children: Vec<ComponentSpecification>,
     id: u64,
-) -> (Box<dyn Any + Send>, ComponentSpecification, Option<UpdateFn>);
+) -> (ComponentSpecification, Option<UpdateFn>);
 
 
 #[derive(Default)]
@@ -30,11 +30,11 @@ impl UpdateResult {
    }
 }
 
-pub type UpdateFn = fn(state: &mut Box<dyn Any + Send>, id: u64, message: Message, source_element_id: Option<String>) -> UpdateResult;
+pub type UpdateFn = fn(state: &mut (dyn Any + Send), id: u64, message: Message, source_element_id: Option<String>) -> UpdateResult;
 
 #[derive(Clone)]
 pub enum ComponentOrElement {
-    ComponentSpec(ViewFn, String, TypeId),
+    ComponentSpec(fn() -> Box<dyn Any + Send>, ViewFn, String, TypeId),
     Element(Box<dyn Element>),
 }
 
@@ -70,11 +70,51 @@ macro_rules! component {
     };
 }
 
-pub trait Component<State = (), Message = ()>
+pub trait Component
 where
-    State: Clone + Send + Sized + 'static,
+    Self: 'static + Default + Send,
 {
-    fn view(&self, props: Option<Props>, children: Vec<ComponentSpecification>, id: u64) -> ComponentSpecification;
+    fn view(
+        state: &Self,
+        _props: Option<Props>,
+        _children: Vec<ComponentSpecification>,
+        id: u64,
+    ) -> (ComponentSpecification, Option<UpdateFn>);
 
-    fn update(&self, id: u64, message: crate::engine::events::Message);
+    fn generic_view(
+        state: &(dyn Any + Send),
+        props: Option<Props>,
+        children: Vec<ComponentSpecification>,
+        id: u64,
+    ) -> (ComponentSpecification, Option<UpdateFn>) {
+        let casted_state: &Self = state.downcast_ref::<Self>().unwrap();
+
+        Self::view(casted_state, props, children, id)
+    }
+
+    fn default_state() -> Box<dyn Any + Send> {
+        Box::new(Self::default())
+    }
+
+    fn update(state: &mut Self, id: u64, message: Message, source_element: Option<String>) -> UpdateResult;
+
+    fn generic_update(
+        state: &mut (dyn Any + Send),
+        id: u64,
+        message: Message,
+        source_element: Option<String>,
+    ) -> UpdateResult {
+        let casted_state: &mut Self = state.downcast_mut::<Self>().unwrap();
+
+        Self::update(casted_state, id, message, source_element)
+    }
+
+    fn component() -> ComponentOrElement {
+        ComponentOrElement::ComponentSpec(
+            Self::default_state,
+            Self::generic_view,
+            std::any::type_name_of_val(&Self::generic_view).to_string(),
+            Self::generic_view.type_id(),
+        )
+    }
 }

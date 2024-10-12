@@ -111,14 +111,15 @@ pub(crate) fn create_trees_from_render_specification(
                     // Store the new tag, i.e. the element's name.
                     let new_tag = element.name().to_string();
 
+                    let default: Box<dyn Any + Send> = Box::new(());
                     let id = if let Some(old_tag) = old_tag {
                         if new_tag == old_tag {
                             (*tree_node.old_component_node.unwrap()).id
                         } else {
-                            create_unique_element_id(user_state)
+                            create_unique_element_id(user_state, default)
                         }
                     } else {
-                        create_unique_element_id(user_state)
+                        create_unique_element_id(user_state, default)
                     };
 
                     element.set_component_id(id);
@@ -182,7 +183,7 @@ pub(crate) fn create_trees_from_render_specification(
 
                     to_visit.extend(new_to_visits.into_iter().rev());
                 }
-                ComponentOrElement::ComponentSpec(component_spec, new_tag, _type_id) => {
+                ComponentOrElement::ComponentSpec(default, component_spec, new_tag, _type_id) => {
                     let children_keys = (*parent_component_ptr).children_keys.clone();
 
                     let id: u64 = if key.is_some() && children_keys.contains_key(&key.clone().unwrap()) {
@@ -192,27 +193,24 @@ pub(crate) fn create_trees_from_render_specification(
                             // If the old tag is the same as the new tag, we can reuse the old id.
                             (*tree_node.old_component_node.unwrap()).id
                         } else {
-                            create_unique_element_id(user_state)
+                            create_unique_element_id(user_state, default())
                         }
                     } else {
-                        create_unique_element_id(user_state)
+                        create_unique_element_id(user_state, default())
                     };
 
                     let state = user_state.get(&id);
-                    if state.is_none() {
-                        panic!("{id} is None!");
-                    }
-                    let x = state.unwrap();
+                    let state = state.unwrap().as_ref();
 
-                    let new_component = component_spec(x, props, children, id);
-                    let default = new_component.0;
-                    user_state.insert(id, default);
+                    let new_component = component_spec(state, props, children, id);
+                    //let default = new_component.0;
+                    //user_state.insert(id, default);
 
                     let new_component_node = ComponentTreeNode {
                         is_element: false,
                         key: key.clone(),
                         tag: (*new_tag).clone(),
-                        update: new_component.2,
+                        update: new_component.1,
                         children: vec![],
                         children_keys: HashMap::new(),
                         id,
@@ -236,7 +234,7 @@ pub(crate) fn create_trees_from_render_specification(
 
                     // Add the computed component spec to the to visit list.
                     to_visit.push(TreeVisitorNode {
-                        component_specification: Rc::new(RefCell::new(new_component.1)),
+                        component_specification: Rc::new(RefCell::new(new_component.0)),
                         parent_element_ptr,
                         parent_component_node: new_component_pointer,
                         old_component_node: old_component_tree,
