@@ -1,6 +1,14 @@
+mod pointer_button;
+mod pointer_moved;
+
 pub mod update_queue_entry;
 
-use crate::MouseInput;
+pub use pointer_button::PointerButton;
+pub use pointer_moved::PointerMoved;
+pub use winit::event::ElementState;
+pub use winit::event::ButtonSource;
+pub use winit::event::MouseButton;
+
 use std::any::Any;
 
 pub enum EventResult {
@@ -8,14 +16,9 @@ pub enum EventResult {
     Continue,
 }
 
-pub struct ClickMessage {
-    pub(crate) mouse_input: MouseInput,
-    pub(crate) x: f64,
-    pub(crate) y: f64,
-}
-
 pub enum OkuEvent {
-    Click(ClickMessage),
+    PointerButtonEvent(PointerButton),
+    PointerMovedEvent(PointerMoved),
 }
 
 pub enum Message {

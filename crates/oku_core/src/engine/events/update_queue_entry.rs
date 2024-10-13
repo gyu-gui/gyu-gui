@@ -19,5 +19,3 @@ impl UpdateQueueEntry {
     }
     
 }
-
-//(u64, Option<String>, UpdateFn, UpdateResult)

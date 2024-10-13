@@ -5,6 +5,7 @@ use oku::user::elements::text::Text;
 use oku_core::engine::events::Message;
 
 use bytes::Bytes;
+use oku::platform::resource_manager::ResourceIdentifier;
 use oku::RendererType::Wgpu;
 use oku::{oku_main_with_options, OkuOptions};
 use oku_core::engine::events::OkuEvent;
@@ -13,7 +14,6 @@ use oku_core::user::elements::element::Element;
 use oku_core::user::elements::image::Image;
 use oku_core::PinnedFutureAny;
 use std::any::Any;
-use oku::platform::resource_manager::ResourceIdentifier;
 
 #[derive(Default, Clone)]
 pub struct Request {
@@ -65,15 +65,13 @@ impl Component for Request {
         }
 
         let res: Option<PinnedFutureAny> = match message {
-            Message::OkuMessage(oku_message) => match oku_message {
-                OkuEvent::Click(click_message) => Some(Box::pin(async {
-                    let res = reqwest::get("https://picsum.photos/800").await;
-                    let bytes = res.unwrap().bytes().await.ok();
-                    let boxed: Box<dyn Any + Send> = Box::new(bytes);
+            Message::OkuMessage(OkuEvent::PointerButtonEvent(pointer_button)) => Some(Box::pin(async {
+                let res = reqwest::get("https://picsum.photos/800").await;
+                let bytes = res.unwrap().bytes().await.ok();
+                let boxed: Box<dyn Any + Send> = Box::new(bytes);
 
-                    boxed
-                })),
-            },
+                boxed
+            })),
             Message::UserMessage(user_message) => {
                 if let Ok(image_data) = user_message.downcast::<Option<Bytes>>() {
                     std::fs::write("a.jpg", image_data.clone().unwrap().as_ref()).ok();

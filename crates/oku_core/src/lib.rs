@@ -23,7 +23,7 @@ use user::reactive::element_id::reset_unique_element_id;
 use user::reactive::fiber_node::FiberNode;
 use winit::application::ApplicationHandler;
 use winit::dpi::PhysicalSize;
-use winit::event::{DeviceId, ElementState, KeyEvent, MouseButton, StartCause, WindowEvent};
+use winit::event::{ButtonSource, DeviceId, ElementState, KeyEvent, MouseButton, StartCause, WindowEvent};
 use winit::event_loop::{ActiveEventLoop, ControlFlow, EventLoop};
 use winit::keyboard::{Key, NamedKey};
 use winit::window::{Window, WindowAttributes, WindowId};
@@ -35,7 +35,7 @@ use crate::user::elements::layout_context::{measure_content, LayoutContext};
 use crate::user::elements::style::Unit;
 use crate::user::reactive::tree::{create_trees_from_render_specification, ComponentTreeNode};
 use crate::engine::events::update_queue_entry::UpdateQueueEntry;
-use engine::events::{ClickMessage, Message, OkuEvent};
+use engine::events::{Message, OkuEvent};
 use engine::renderer::color::Color;
 use engine::renderer::renderer::Renderer;
 use engine::renderer::softbuffer::SoftwareRenderer;
@@ -45,6 +45,7 @@ const WAIT_TIME: time::Duration = time::Duration::from_millis(100);
 
 pub use tokio::spawn;
 pub use tokio::join;
+use crate::engine::events::{PointerButton, PointerMoved};
 use crate::platform::resource_manager::ResourceManager;
 
 pub type PinnedFutureAny = Pin<Box<dyn Future<Output = Box<dyn Any + Send>> + Send>>;
@@ -80,13 +81,6 @@ struct OkuState {
 }
 
 #[derive(Copy, Clone, Debug)]
-struct MouseInput {
-    device_id: DeviceId,
-    state: ElementState,
-    button: MouseButton,
-}
-
-#[derive(Copy, Clone, Debug)]
 struct MouseMoved {
     device_id: DeviceId,
     position: (f64, f64),
@@ -98,8 +92,8 @@ enum InternalMessage {
     Confirmation,
     Resume(Arc<dyn Window>, Option<Box<dyn Renderer + Send>>),
     Resize(PhysicalSize<u32>),
-    MouseInput(MouseInput),
-    MouseMoved(MouseMoved),
+    PointerButton(PointerButton),
+    PointerMoved(PointerMoved),
     ProcessUserEvents,
     GotUserMessage((UpdateFn, u64, Option<String>, Box<dyn Any + Send>))
 }
@@ -194,33 +188,22 @@ impl ApplicationHandler for OkuState {
                 self.send_message(InternalMessage::Close, true);
                 self.close_requested = true;
             }
-            WindowEvent::MouseInput {
+            WindowEvent::PointerButton {
                 device_id,
                 state,
+                position,
                 button,
             } => {
-                let mouse_event = MouseInput {
-                    device_id,
-                    state,
-                    button,
-                };
-                if let MouseButton::Left = button {
-                    self.request_redraw = true;
-
-                    if state == ElementState::Pressed {
-                        self.send_message(InternalMessage::MouseInput(mouse_event), true);
-                    }
-                }
+                let event = PointerButton::new(device_id, state, position, button);
+                self.send_message(InternalMessage::PointerButton(event), false);
             }
-            WindowEvent::CursorMoved {
+            WindowEvent::PointerMoved {
                 device_id,
                 position,
+                source
             } => {
                 self.send_message(
-                    InternalMessage::MouseMoved(MouseMoved {
-                        device_id,
-                        position: (position.x, position.y),
-                    }),
+                    InternalMessage::PointerMoved(PointerMoved::new(device_id, position, source)),
                     true,
                 );
             }
@@ -339,11 +322,11 @@ async fn async_main(
                 InternalMessage::Resize(new_size) => {
                     on_resize(&tx, &mut app, id, wait_for_response, new_size).await;
                 }
-                InternalMessage::MouseInput(_mouse_input) => {
-                    on_mouse_input(&tx, &mut app, id, wait_for_response, _mouse_input).await;
+                InternalMessage::PointerButton(pointer_button) => {
+                    on_pointer_button(&tx, &mut app, id, wait_for_response, pointer_button).await;
                 }
-                InternalMessage::MouseMoved(mouse_moved) => {
-                    on_mouse_move(&tx, &mut app, id, wait_for_response, mouse_moved).await;
+                InternalMessage::PointerMoved(pointer_moved) => {
+                    on_pointer_moved(&tx, &mut app, id, wait_for_response, pointer_moved).await;
                 }
                 InternalMessage::ProcessUserEvents => {
                     if app.update_queue.is_empty() {
@@ -373,14 +356,14 @@ async fn async_main(
     }
 }
 
-async fn on_mouse_move(
+async fn on_pointer_moved(
     tx: &Sender<(u64, InternalMessage)>,
     app: &mut Box<App>,
     id: u64,
     wait_for_response: bool,
-    mouse_moved: MouseMoved,
+    mouse_moved: PointerMoved,
 ) {
-    app.mouse_position = (mouse_moved.position.0 as f32, mouse_moved.position.1 as f32);
+    app.mouse_position = (mouse_moved.position.x as f32, mouse_moved.position.y as f32);
     send_response(id, wait_for_response, &tx).await;
 }
 
@@ -400,12 +383,12 @@ async fn on_resize(
     send_response(id, wait_for_response, &tx).await;
 }
 
-async fn on_mouse_input(
+async fn on_pointer_button(
     tx: &Sender<(u64, InternalMessage)>,
     mut app: &mut Box<App>,
     id: u64,
     wait_for_response: bool,
-    _mouse_input: MouseInput,
+    pointer_button: PointerButton,
 ) {
     {
         let current_element_tree = if let Some(current_element_tree) = app.element_tree.as_ref() {
@@ -460,15 +443,7 @@ async fn on_mouse_input(
             let mut to_visit = Some(target_component);
 
             while let Some(node) = to_visit {
-                let event = OkuEvent::Click(ClickMessage {
-                    mouse_input: MouseInput {
-                        device_id: _mouse_input.device_id,
-                        state: _mouse_input.state,
-                        button: _mouse_input.button,
-                    },
-                    x: app.mouse_position.0 as f64,
-                    y: app.mouse_position.1 as f64,
-                });
+                let event = OkuEvent::PointerButtonEvent(pointer_button);
 
                 let state = app.user_state.get_mut(&node.id).unwrap().as_mut();
                 let res = (node.update)(state, node.id, Message::OkuMessage(event), target_element_id.clone());

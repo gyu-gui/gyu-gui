@@ -2,11 +2,12 @@ use oku::user::components::component::ComponentSpecification;
 use oku::user::components::props::Props;
 use oku::user::elements::container::Container;
 use oku::user::elements::text::Text;
-use oku_core::engine::events::Message;
+use oku_core::engine::events::{ButtonSource, ElementState, Message, MouseButton};
 
 use oku::RendererType::Wgpu;
 use oku::{oku_main_with_options, OkuOptions};
 use oku_core::engine::events::OkuEvent;
+use oku_core::engine::events::OkuEvent::PointerButtonEvent;
 use oku_core::user::components::component::{Component, ComponentId, UpdateResult};
 use oku_core::user::elements::element::Element;
 
@@ -59,8 +60,10 @@ impl Component for Counter {
             return UpdateResult::default();
         }
 
-        if let Message::OkuMessage(OkuEvent::Click(click_message)) = message {
-            state.count += 1
+        if let Message::OkuMessage(PointerButtonEvent(pointer_button)) = message {
+            if pointer_button.button == ButtonSource::Mouse(MouseButton::Left)  && pointer_button.state == ElementState::Pressed {
+                state.count += 1   
+            }
         };
 
         UpdateResult::new(true, None)
