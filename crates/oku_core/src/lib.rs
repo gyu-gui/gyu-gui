@@ -222,7 +222,7 @@ enum EventStatus {
 }
 
 impl OkuState {
-    
+
     fn send_message(&mut self, message: InternalMessage, blocking: bool) {
         let app_message = AppMessage {
             id: self.id,
@@ -283,7 +283,7 @@ async fn async_main(
         if let Some(app_message) = app_receiver.recv().await {
             let mut dummy_message = AppMessage::new(app_message.id, InternalMessage::Confirmation);
             dummy_message.blocking = app_message.blocking;
-            
+
             match app_message.data {
                 InternalMessage::RequestRedraw => {
                     on_request_redraw(&mut app).await;
@@ -312,28 +312,7 @@ async fn async_main(
                     send_response(dummy_message, &app.winit_sender).await;
                 }
                 InternalMessage::ProcessUserEvents => {
-                    if app.update_queue.is_empty() {
-                        continue;
-                    }
-
-                    for event in app.update_queue.drain(..) {
-                        let app_sender_copy = app_sender.clone();
-                        tokio::spawn(async move {
-                            let update_result = event.update_result.result.unwrap();
-                            let res = update_result.await;
-                            app_sender_copy.send(AppMessage::new(
-                                0,
-                                InternalMessage::GotUserMessage((
-                                    event.update_function,
-                                    event.source_component,
-                                    event.source_element,
-                                    res,
-                                )),
-                            ))
-                            .await
-                            .expect("send failed");
-                        });
-                    }
+                    on_process_user_events(&mut app, &app_sender);
                 }
                 InternalMessage::GotUserMessage(message) => {
                     let update_fn = message.0;
@@ -346,6 +325,31 @@ async fn async_main(
                 }
             }
         }
+    }
+}
+
+fn on_process_user_events(app: &mut Box<App>, app_sender: &mpsc::Sender<AppMessage>,) {
+    if app.update_queue.is_empty() {
+        return;;
+    }
+
+    for event in app.update_queue.drain(..) {
+        let app_sender_copy = app_sender.clone();
+        tokio::spawn(async move {
+            let update_result = event.update_result.result.unwrap();
+            let res = update_result.await;
+            app_sender_copy.send(AppMessage::new(
+                0,
+                InternalMessage::GotUserMessage((
+                    event.update_function,
+                    event.source_component,
+                    event.source_element,
+                    res,
+                )),
+            ))
+                .await
+                .expect("send failed");
+        });
     }
 }
 
