@@ -483,13 +483,23 @@ async fn on_resume(
     app.renderer = renderer;
 }
 
-async fn scan_view_for_resources(root: &dyn Element) {}
+fn scan_view_for_resources(element: &dyn Element, component: &ComponentTreeNode, app: &mut App) {
+    let fiber: FiberNode = FiberNode {
+        element: Some(element),
+        component: Some(component),
+    };
 
-async fn on_request_redraw(app: &mut Box<App>) {
-    let renderer = app.renderer.as_mut().unwrap();
+    for fiber_node in fiber.level_order_iter().collect::<Vec<FiberNode>>().iter().rev() {
+        if let Some(element) = fiber_node.element {
+            if element.name() == Image::name() {
+                let resource_identifier = element.as_any().downcast_ref::<Image>().unwrap().resource_identifier.clone();
+                app.resource_manager.add(resource_identifier);
+            }
+        }
+    }
+}
 
-    renderer.surface_set_clear_color(Color::new_from_rgba_u8(255, 255, 255, 255));
-
+async fn on_request_redraw(app: &mut App) {
     let window_element = Container::new().into();
     let old_component_tree = app.component_tree.as_ref();
     let new_tree = create_trees_from_render_specification(
@@ -498,11 +508,15 @@ async fn on_request_redraw(app: &mut Box<App>) {
         old_component_tree,
         &mut app.user_state,
     );
+
+    scan_view_for_resources(new_tree.1.as_ref(), &new_tree.0, app);
+    
     app.component_tree = Some(new_tree.0);
-
-
     let mut root = new_tree.1;
 
+    let renderer = app.renderer.as_mut().unwrap();
+
+    renderer.surface_set_clear_color(Color::new_from_rgba_u8(255, 255, 255, 255));
     root.style_mut().width = Unit::Percentage(renderer.surface_width());
 
     let is_user_root_height_auto = {
@@ -521,25 +535,7 @@ async fn on_request_redraw(app: &mut Box<App>) {
     root = layout(renderer.surface_width(), renderer.surface_height(), app.renderer_context.as_mut().unwrap(), &mut root);
     root.draw(renderer, app.renderer_context.as_mut().unwrap());
     app.element_tree = Some(root);
-
-
-    //
-    {
-        let fiber: FiberNode = FiberNode {
-            element: Some(app.element_tree.as_deref().unwrap()),
-            component: Some(app.component_tree.as_ref().unwrap()),
-        };
-
-        for fiber_node in fiber.level_order_iter().collect::<Vec<FiberNode>>().iter().rev() {
-            if let Some(element) = fiber_node.element {
-                if element.name() == Image::name() {
-                    let resource_identifier = element.as_any().downcast_ref::<Image>().unwrap().resource_identifier.clone();
-                    app.resource_manager.add(resource_identifier);
-                }
-            }
-        }
-    }
-
+    
     renderer.submit();
 }
 
