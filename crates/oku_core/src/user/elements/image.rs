@@ -22,7 +22,7 @@ impl Image {
             common_element_data: Default::default(),
         }
     }
-    
+
     pub fn name() -> &'static str {
         "Image"
     }

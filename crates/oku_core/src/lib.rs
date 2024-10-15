@@ -14,21 +14,18 @@ use crate::user::components::component::{
 use cosmic_text::{FontSystem, SwashCache};
 use std::any::Any;
 use std::collections::{HashMap, VecDeque};
-use std::fmt::{Display, Formatter};
+use std::fmt::{Formatter};
 use std::future::Future;
-use std::ops::Deref;
 use std::pin::Pin;
 use std::sync::Arc;
 use std::time;
-use tokio::pin;
 use tokio::sync::mpsc;
-use tokio::sync::mpsc::Sender;
 use tracing::info;
 use user::reactive::element_id::reset_unique_element_id;
 use user::reactive::fiber_node::FiberNode;
 use winit::application::ApplicationHandler;
 use winit::dpi::PhysicalSize;
-use winit::event::{ButtonSource, DeviceId, ElementState, KeyEvent, MouseButton, StartCause, WindowEvent};
+use winit::event::{DeviceId, ElementState, KeyEvent, MouseButton, StartCause, WindowEvent};
 use winit::event_loop::{ActiveEventLoop, ControlFlow, EventLoop};
 use winit::keyboard::{Key, NamedKey};
 use winit::window::{Window, WindowAttributes, WindowId};
@@ -53,6 +50,8 @@ pub use crate::options::RendererType;
 use crate::platform::resource_manager::ResourceManager;
 pub use tokio::join;
 pub use tokio::spawn;
+use engine::events::internal::InternalMessage;
+use crate::engine::app_message::AppMessage;
 use crate::user::elements::image::Image;
 
 pub type PinnedFutureAny = Pin<Box<dyn Future<Output = Box<dyn Any + Send>> + Send>>;
@@ -68,6 +67,7 @@ struct App {
     update_queue: VecDeque<UpdateQueueEntry>,
     user_state: HashMap<ComponentId, Box<GenericUserState>>,
     resource_manager: ResourceManager,
+    winit_sender: mpsc::Sender<AppMessage>
 }
 
 pub struct RenderContext {
@@ -82,21 +82,9 @@ struct OkuState {
     wait_cancelled: bool,
     close_requested: bool,
     window: Option<Arc<dyn Window>>,
-    app_to_winit_rx: mpsc::Receiver<(u64, InternalMessage)>,
-    winit_to_app_tx: mpsc::Sender<(u64, bool, InternalMessage)>,
+    winit_receiver: mpsc::Receiver<AppMessage>,
+    app_sender: mpsc::Sender<AppMessage>,
     oku_options: OkuOptions,
-}
-
-enum InternalMessage {
-    RequestRedraw,
-    Close,
-    Confirmation,
-    Resume(Arc<dyn Window>, Option<Box<dyn Renderer + Send>>),
-    Resize(PhysicalSize<u32>),
-    PointerButton(PointerButton),
-    PointerMoved(PointerMoved),
-    ProcessUserEvents,
-    GotUserMessage((UpdateFn, u64, Option<String>, Box<dyn Any + Send>)),
 }
 
 pub fn oku_main(application: ComponentSpecification) {
@@ -114,12 +102,12 @@ pub fn oku_main_with_options(application: ComponentSpecification, options: Optio
 
     info!("Created winit event loop");
 
-    let (winit_to_app_tx, winit_to_app_rx) = mpsc::channel::<(u64, bool, InternalMessage)>(100);
-    let (app_to_winit_tx, app_to_winit_rx) = mpsc::channel::<(u64, InternalMessage)>(100);
+    let (app_sender, app_receiver) = mpsc::channel::<AppMessage>(100);
+    let (winit_sender, winit_receiver) = mpsc::channel::<AppMessage>(100);
 
-    let x = winit_to_app_tx.clone();
+    let x = app_sender.clone();
     rt.spawn(async move {
-        async_main(application, winit_to_app_rx, app_to_winit_tx, x).await;
+        async_main(application, app_receiver, winit_sender, x).await;
     });
 
     let mut app = OkuState {
@@ -129,8 +117,8 @@ pub fn oku_main_with_options(application: ComponentSpecification, options: Optio
         wait_cancelled: false,
         close_requested: false,
         window: None,
-        app_to_winit_rx,
-        winit_to_app_tx: winit_to_app_tx.clone(),
+        winit_receiver,
+        app_sender: app_sender.clone(),
         oku_options: options.unwrap_or_default(),
     };
 
@@ -234,15 +222,24 @@ enum EventStatus {
 }
 
 impl OkuState {
-    fn send_message(&mut self, message: InternalMessage, wait_for_response: bool) {
-        let id = self.id;
+    
+    fn send_message(&mut self, message: InternalMessage, blocking: bool) {
+        let app_message = AppMessage {
+            id: self.id,
+            blocking,
+            data: message,
+        };
         self.rt.block_on(async {
-            self.winit_to_app_tx.send((id, wait_for_response, message)).await.expect("send failed");
-            if wait_for_response {
-                if let Some((id, InternalMessage::Confirmation)) = self.app_to_winit_rx.recv().await {
-                    assert_eq!(id, self.id, "Expected response message with id {}", self.id);
+            self.app_sender.send(app_message).await.expect("send failed");
+            if blocking {
+                if let Some(response) = self.winit_receiver.recv().await {
+                    if let(InternalMessage::Confirmation) = response.data {
+                        assert_eq!(response.id, self.id, "Expected response message with id {}", self.id);
+                    } else {
+                        panic!("Expected response message, but response was something else");
+                    }
                 } else {
-                    panic!("Expected response message");
+                    panic!("Expected response message, but response was empty");
                 }
             }
         });
@@ -250,21 +247,21 @@ impl OkuState {
     }
 }
 
-async fn send_response(id: u64, wait_for_response: bool, tx: &mpsc::Sender<(u64, InternalMessage)>) {
-    if wait_for_response {
-        tx.send((id, InternalMessage::Confirmation)).await.expect("send failed");
+async fn send_response(app_message: AppMessage, sender: &mpsc::Sender<AppMessage>) {
+    if app_message.blocking {
+        sender.send(AppMessage::new(app_message.id, InternalMessage::Confirmation)).await.expect("send failed");
     }
 }
 
 async fn async_main(
     application: ComponentSpecification,
-    mut rx: mpsc::Receiver<(u64, bool, InternalMessage)>,
-    tx: mpsc::Sender<(u64, InternalMessage)>,
-    app_tx: mpsc::Sender<(u64, bool, InternalMessage)>,
+    mut app_receiver: mpsc::Receiver<AppMessage>,
+    winit_sender: mpsc::Sender<AppMessage>,
+    app_tx: mpsc::Sender<AppMessage>,
 ) {
     let mut user_state = HashMap::new();
 
-    let dummy_root_value: Box<(dyn Any + Send + 'static)> = Box::new(0);
+    let dummy_root_value: Box<GenericUserState> = Box::new(());
     user_state.insert(0, dummy_root_value);
 
     let mut app = Box::new(App {
@@ -278,32 +275,41 @@ async fn async_main(
         update_queue: VecDeque::new(),
         user_state,
         resource_manager: ResourceManager::new(),
+        winit_sender: winit_sender.clone(),
     });
 
     info!("starting main event loop");
     loop {
-        if let Some((id, wait_for_response, msg)) = rx.recv().await {
-            match msg {
+        if let Some(app_message) = app_receiver.recv().await {
+            let mut dummy_message = AppMessage::new(app_message.id, InternalMessage::Confirmation);
+            dummy_message.blocking = app_message.blocking;
+            
+            match app_message.data {
                 InternalMessage::RequestRedraw => {
-                    on_request_redraw(&tx, &mut app, id, wait_for_response).await;
+                    on_request_redraw(&mut app).await;
+                    send_response(dummy_message, &app.winit_sender).await;
                 }
                 InternalMessage::Close => {
                     info!("Closing");
-                    send_response(id, wait_for_response, &tx).await;
+                    send_response(dummy_message, &app.winit_sender).await;
                     break;
                 }
                 InternalMessage::Confirmation => {}
                 InternalMessage::Resume(window, renderer) => {
-                    on_resume(&tx, &mut app, id, wait_for_response, window, renderer).await;
+                    on_resume(&mut app, window.clone(), renderer).await;
+                    send_response(dummy_message, &app.winit_sender).await;
                 }
                 InternalMessage::Resize(new_size) => {
-                    on_resize(&tx, &mut app, id, wait_for_response, new_size).await;
+                    on_resize(&mut app, new_size).await;
+                    send_response(dummy_message, &app.winit_sender).await;
                 }
                 InternalMessage::PointerButton(pointer_button) => {
-                    on_pointer_button(&tx, &mut app, id, wait_for_response, pointer_button).await;
+                    on_pointer_button(&mut app, pointer_button).await;
+                    send_response(dummy_message, &app.winit_sender).await;
                 }
                 InternalMessage::PointerMoved(pointer_moved) => {
-                    on_pointer_moved(&tx, &mut app, id, wait_for_response, pointer_moved).await;
+                    on_pointer_moved(&mut app, pointer_moved.clone()).await;
+                    send_response(dummy_message, &app.winit_sender).await;
                 }
                 InternalMessage::ProcessUserEvents => {
                     if app.update_queue.is_empty() {
@@ -315,9 +321,8 @@ async fn async_main(
                         tokio::spawn(async move {
                             let update_result = event.update_result.result.unwrap();
                             let res = update_result.await;
-                            tx.send((
+                            tx.send(AppMessage::new(
                                 0,
-                                false,
                                 InternalMessage::GotUserMessage((
                                     event.update_function,
                                     event.source_component,
@@ -345,21 +350,14 @@ async fn async_main(
 }
 
 async fn on_pointer_moved(
-    tx: &Sender<(u64, InternalMessage)>,
     app: &mut Box<App>,
-    id: u64,
-    wait_for_response: bool,
     mouse_moved: PointerMoved,
 ) {
     app.mouse_position = (mouse_moved.position.x as f32, mouse_moved.position.y as f32);
-    send_response(id, wait_for_response, &tx).await;
 }
 
 async fn on_resize(
-    tx: &Sender<(u64, InternalMessage)>,
     app: &mut Box<App>,
-    id: u64,
-    wait_for_response: bool,
     new_size: PhysicalSize<u32>,
 ) {
     let renderer = app.renderer.as_mut().unwrap();
@@ -367,22 +365,16 @@ async fn on_resize(
 
     // On macOS the window needs to be redrawn manually after resizing
     app.window.as_ref().unwrap().request_redraw();
-
-    send_response(id, wait_for_response, &tx).await;
 }
 
 async fn on_pointer_button(
-    tx: &Sender<(u64, InternalMessage)>,
     mut app: &mut Box<App>,
-    id: u64,
-    wait_for_response: bool,
     pointer_button: PointerButton,
 ) {
     {
         let current_element_tree = if let Some(current_element_tree) = app.element_tree.as_ref() {
             current_element_tree
         } else {
-            send_response(id, wait_for_response, tx).await;
             return;
         };
 
@@ -460,16 +452,12 @@ async fn on_pointer_button(
     }
 
     app.window.as_ref().unwrap().request_redraw();
-    send_response(id, wait_for_response, tx).await;
 }
 
 async fn on_resume(
-    tx: &Sender<(u64, InternalMessage)>,
-    app: &mut Box<App>,
-    id: u64,
-    wait_for_response: bool,
+    app: &mut App,
     window: Arc<dyn Window>,
-    renderer: Option<Box<dyn Renderer + Send>>,
+    renderer: Option<Box<dyn Renderer + Send>>
 ) {
     if app.element_tree.is_none() {
         reset_unique_element_id();
@@ -489,13 +477,11 @@ async fn on_resume(
 
     app.window = Some(window.clone());
     app.renderer = renderer;
-
-    send_response(id, wait_for_response, &tx).await;
 }
 
 async fn scan_view_for_resources(root: &dyn Element) {}
 
-async fn on_request_redraw(tx: &Sender<(u64, InternalMessage)>, app: &mut Box<App>, id: u64, wait_for_response: bool) {
+async fn on_request_redraw(app: &mut Box<App>) {
     let renderer = app.renderer.as_mut().unwrap();
 
     renderer.surface_set_clear_color(Color::new_from_rgba_u8(255, 255, 255, 255));
@@ -509,7 +495,7 @@ async fn on_request_redraw(tx: &Sender<(u64, InternalMessage)>, app: &mut Box<Ap
         &mut app.user_state,
     );
     app.component_tree = Some(new_tree.0);
-    
+
 
     let mut root = new_tree.1;
 
@@ -531,8 +517,8 @@ async fn on_request_redraw(tx: &Sender<(u64, InternalMessage)>, app: &mut Box<Ap
     root = layout(renderer.surface_width(), renderer.surface_height(), app.renderer_context.as_mut().unwrap(), &mut root);
     root.draw(renderer, app.renderer_context.as_mut().unwrap());
     app.element_tree = Some(root);
-    
-    
+
+
     //
     {
         let fiber: FiberNode = FiberNode {
@@ -543,23 +529,14 @@ async fn on_request_redraw(tx: &Sender<(u64, InternalMessage)>, app: &mut Box<Ap
         for fiber_node in fiber.level_order_iter().collect::<Vec<FiberNode>>().iter().rev() {
             if let Some(element) = fiber_node.element {
                 if element.name() == Image::name() {
-                    let x = element.as_any().downcast_ref::<Image>().unwrap().resource_identifier.clone();
-                    app.resource_manager.add(x);
-                    /*
-                    unsafe {
-                        let image = element;
-                        let resource_identifier = 
-                    }
-                    app.resource_manager.add((element as &Image).resource_identifier.clone());*/
+                    let resource_identifier = element.as_any().downcast_ref::<Image>().unwrap().resource_identifier.clone();
+                    app.resource_manager.add(resource_identifier);
                 }
             }
         }
     }
-    
-    //
 
     renderer.submit();
-    send_response(id, wait_for_response, &tx).await;
 }
 
 fn layout(

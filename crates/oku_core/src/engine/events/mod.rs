@@ -2,6 +2,7 @@ mod pointer_button;
 mod pointer_moved;
 
 pub mod update_queue_entry;
+pub(crate) mod internal;
 
 pub use pointer_button::PointerButton;
 pub use pointer_moved::PointerMoved;

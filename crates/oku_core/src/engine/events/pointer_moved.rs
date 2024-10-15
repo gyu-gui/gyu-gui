@@ -1,6 +1,7 @@
 use winit::dpi::PhysicalPosition;
 use winit::event::{DeviceId, PointerSource};
 
+#[derive(Clone)]
 pub struct PointerMoved {
     pub device_id: Option<DeviceId>,
 

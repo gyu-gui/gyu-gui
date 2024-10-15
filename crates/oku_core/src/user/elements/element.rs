@@ -77,7 +77,7 @@ pub trait Element: Any + StandardElementClone + Debug + Send {
 
     fn compute_layout(&mut self, taffy_tree: &mut TaffyTree<LayoutContext>, font_system: &mut FontSystem) -> NodeId;
     fn finalize_layout(&mut self, taffy_tree: &mut TaffyTree<LayoutContext>, root_node: NodeId, x: f32, y: f32);
-    
+
     fn as_any(&self) -> &dyn Any;
 }
 

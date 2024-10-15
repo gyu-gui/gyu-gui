@@ -10,7 +10,6 @@ use std::pin::Pin;
 pub use crate::platform::resource_manager::identifier::ResourceIdentifier;
 use crate::platform::resource_manager::image::ImageResource;
 use crate::platform::resource_manager::resource::Resource;
-use crate::platform::resource_manager::resource::Resource::Image;
 
 pub type ResourceFuture = Pin<Box<dyn Future<Output = Box<dyn Any + Send + Sync>> + Send + Sync>>;
 
@@ -33,6 +32,8 @@ impl ResourceManager {
         if !self.resources.contains_key(&resource) {
             let image = Resource::Image(ImageResource::new(&resource, None));
             self.resources.insert(resource, image);
+            
+            let x = tokio::spawn(async move {});
         }
         println!("assets {}", self.resources.len())
     }
