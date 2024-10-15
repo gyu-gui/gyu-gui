@@ -257,7 +257,7 @@ async fn async_main(
     application: ComponentSpecification,
     mut app_receiver: mpsc::Receiver<AppMessage>,
     winit_sender: mpsc::Sender<AppMessage>,
-    app_tx: mpsc::Sender<AppMessage>,
+    app_sender: mpsc::Sender<AppMessage>,
 ) {
     let mut user_state = HashMap::new();
 
@@ -317,11 +317,11 @@ async fn async_main(
                     }
 
                     for event in app.update_queue.drain(..) {
-                        let tx = app_tx.clone();
+                        let app_sender_copy = app_sender.clone();
                         tokio::spawn(async move {
                             let update_result = event.update_result.result.unwrap();
                             let res = update_result.await;
-                            tx.send(AppMessage::new(
+                            app_sender_copy.send(AppMessage::new(
                                 0,
                                 InternalMessage::GotUserMessage((
                                     event.update_function,
