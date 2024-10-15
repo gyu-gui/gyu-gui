@@ -14,7 +14,7 @@ use crate::user::components::component::{
 use cosmic_text::{FontSystem, SwashCache};
 use std::any::Any;
 use std::collections::{HashMap, VecDeque};
-use std::fmt::{Formatter};
+use std::fmt::Formatter;
 use std::future::Future;
 use std::pin::Pin;
 use std::sync::Arc;
@@ -45,14 +45,14 @@ use engine::renderer::wgpu::WgpuRenderer;
 
 const WAIT_TIME: time::Duration = time::Duration::from_millis(100);
 
+use crate::engine::app_message::AppMessage;
 use crate::engine::events::{PointerButton, PointerMoved};
 pub use crate::options::RendererType;
 use crate::platform::resource_manager::ResourceManager;
+use crate::user::elements::image::Image;
+use engine::events::internal::InternalMessage;
 pub use tokio::join;
 pub use tokio::spawn;
-use engine::events::internal::InternalMessage;
-use crate::engine::app_message::AppMessage;
-use crate::user::elements::image::Image;
 
 pub type PinnedFutureAny = Pin<Box<dyn Future<Output = Box<dyn Any + Send>> + Send>>;
 
