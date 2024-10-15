@@ -104,9 +104,9 @@ pub fn oku_main_with_options(application: ComponentSpecification, options: Optio
     let (app_sender, app_receiver) = mpsc::channel::<AppMessage>(100);
     let (winit_sender, winit_receiver) = mpsc::channel::<AppMessage>(100);
 
-    let x = app_sender.clone();
+    let app_sender_copy = app_sender.clone();
     rt.spawn(async move {
-        async_main(application, app_receiver, winit_sender, x).await;
+        async_main(application, app_receiver, winit_sender, app_sender_copy).await;
     });
 
     let mut app = OkuState {
