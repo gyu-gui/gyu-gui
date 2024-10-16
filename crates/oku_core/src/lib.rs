@@ -18,6 +18,7 @@ use std::future::Future;
 use std::pin::Pin;
 use std::sync::Arc;
 use std::time;
+use tokio::io::join;
 use tokio::sync::mpsc;
 use tracing::info;
 use user::reactive::element_id::reset_unique_element_id;
@@ -52,6 +53,7 @@ use crate::user::elements::image::Image;
 use engine::events::internal::InternalMessage;
 pub use tokio::join;
 pub use tokio::spawn;
+use crate::engine::events::resource_event::ResourcEvent;
 
 pub type PinnedFutureAny = Pin<Box<dyn Future<Output = Box<dyn Any + Send>> + Send>>;
 
@@ -273,7 +275,7 @@ async fn async_main(
         mouse_position: (0.0, 0.0),
         update_queue: VecDeque::new(),
         user_state,
-        resource_manager: ResourceManager::new(),
+        resource_manager: ResourceManager::new(app_sender.clone()),
         winit_sender: winit_sender.clone(),
     });
 
@@ -321,6 +323,15 @@ async fn async_main(
                     let state = app.user_state.get_mut(&source_component).unwrap().as_mut();
                     update_fn(state, source_component, Message::UserMessage(message), source_element);
                     app.window.as_ref().unwrap().request_redraw();
+                },
+                InternalMessage::ResourceEvent(resource_event) => {
+                    match resource_event {
+                        ResourcEvent::Added(_) => {
+                            println!("Added resource event");
+                        }
+                        ResourcEvent::Loaded(_) => {}
+                        ResourcEvent::UnLoaded(_) => {}
+                    }
                 }
             }
         }
@@ -482,20 +493,22 @@ async fn on_resume(
     app.renderer = renderer;
 }
 
-fn scan_view_for_resources(element: &dyn Element, component: &ComponentTreeNode, app: &mut App) {
+async fn scan_view_for_resources(element: &dyn Element, component: &ComponentTreeNode, app: &mut App) {
     let fiber: FiberNode = FiberNode {
         element: Some(element),
         component: Some(component),
     };
-
+    
+    let rm = &mut app.resource_manager;
     for fiber_node in fiber.level_order_iter().collect::<Vec<FiberNode>>().iter().rev() {
         if let Some(element) = fiber_node.element {
             if element.name() == Image::name() {
                 let resource_identifier = element.as_any().downcast_ref::<Image>().unwrap().resource_identifier.clone();
-                app.resource_manager.add(resource_identifier);
+                 rm.add(resource_identifier).await;
             }
         }
     }
+    
 }
 
 async fn on_request_redraw(app: &mut App) {
@@ -508,7 +521,7 @@ async fn on_request_redraw(app: &mut App) {
         &mut app.user_state,
     );
 
-    scan_view_for_resources(new_tree.1.as_ref(), &new_tree.0, app);
+    scan_view_for_resources(new_tree.1.as_ref(), &new_tree.0, app).await;
 
     app.component_tree = Some(new_tree.0);
     let mut root = new_tree.1;

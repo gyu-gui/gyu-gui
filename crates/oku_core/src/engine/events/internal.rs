@@ -5,6 +5,7 @@ use winit::dpi::PhysicalSize;
 use winit::window::Window;
 
 use crate::engine::events::{PointerButton, PointerMoved};
+use crate::engine::events::resource_event::ResourcEvent;
 use crate::engine::renderer::renderer::Renderer;
 use crate::user::components::component::UpdateFn;
 
@@ -18,4 +19,5 @@ pub enum InternalMessage {
     PointerMoved(PointerMoved),
     ProcessUserEvents,
     GotUserMessage((UpdateFn, u64, Option<String>, Box<dyn Any + Send>)),
+    ResourceEvent(ResourcEvent)
 }

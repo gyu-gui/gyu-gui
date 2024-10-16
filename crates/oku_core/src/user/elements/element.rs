@@ -24,7 +24,7 @@ pub struct CommonElementData {
     pub component_id: u64,
 }
 
-pub trait Element: Any + StandardElementClone + Debug + Send {
+pub trait Element: Any + StandardElementClone + Debug + Send + Sync {
     
     fn common_element_data(&self) -> &CommonElementData;
     fn common_element_data_mut(&mut self) -> &mut CommonElementData;
