@@ -33,13 +33,10 @@ impl ResourceManager {
     }
 
     pub async fn add(&mut self, resource: ResourceIdentifier) {
-        println!("AB");
         if !self.resources.contains_key(&resource) {
             let image = resource.fetch_resource_from_resource_identifier().await;
-            
-            println!("ABC");
+
             if let Some(imageResource) = image {
-                println!("ABCD");
                 let resource_copy = resource.clone();
                 self.resources.insert(resource, imageResource);
 
@@ -48,7 +45,7 @@ impl ResourceManager {
                     .await
                     .expect("Failed to send added resource event");   
             }
-            
+
         }
     }
 }

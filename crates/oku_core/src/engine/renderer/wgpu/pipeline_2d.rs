@@ -321,10 +321,10 @@ impl Pipeline2D {
                         // If we were given an image path, but it isn't in our texture cache then try to load the image from the filesystem.
                         // Fallback to the default texture if that fails.
                         let mut rectangle_texture: &Texture = &context.default_texture;
-                        
+
                         let resource_identifier = &batch.texture_path.clone().unwrap();
                         let resource = resource_manager.resources.get(resource_identifier);
-                        
+
                         if let Some(resource) = resource {
                             let data = resource.data();
                             if let Some(data) = data {
@@ -332,7 +332,7 @@ impl Pipeline2D {
                                 if let Some(texture) = texture {
                                     self.textures.insert(texture_path.clone(), texture);
                                     rectangle_texture = self.textures.get(&texture_path.clone()).unwrap();
-                                }   
+                                }
                             }
                         }
 
@@ -357,7 +357,7 @@ impl Pipeline2D {
                 });
 
                 // Don't cache the textures for now.
-                self.textures.clear();
+                // self.textures.clear();
 
                 vertex_buffers.push(vertex_buffer);
                 index_buffers.push(index_buffer);

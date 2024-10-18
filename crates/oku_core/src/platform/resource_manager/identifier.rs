@@ -20,11 +20,10 @@ impl ResourceIdentifier {
                 let bytes = res.unwrap().bytes().await.ok();
                 
                 // Do error checking here.
-
-                let image = image::load_from_memory(&*bytes?).unwrap();
-                let width = image.width();
-                let height = image.height();
-                let generic_resource = ResourceData::new(self.clone(), image.as_bytes().to_vec(), None);
+                // let image = image::load_from_memory(&*bytes?).unwrap();
+                let width = 200;
+                let height = 200;
+                let generic_resource = ResourceData::new(self.clone(), bytes.unwrap().to_vec()/*image.as_bytes().to_vec()*/, None);
                 
                 return Some(Resource::Image(ImageResource::new(width, height, generic_resource)));
             }
