@@ -10,20 +10,23 @@ use crate::engine::renderer::renderer::{Rectangle, Renderer};
 use glam;
 use image::{GenericImageView, ImageEncoder};
 use std::sync::Arc;
+use tokio::sync::RwLock;
 use wgpu::util::DeviceExt;
 use winit::window::Window;
 use crate::engine::renderer::wgpu::camera::Camera;
 use crate::engine::renderer::wgpu::context::{create_surface_config, request_adapter, request_device_and_queue, Context};
 use crate::engine::renderer::wgpu::pipeline_2d::Pipeline2D;
 use crate::engine::renderer::wgpu::texture::Texture;
+use crate::platform::resource_manager::{ResourceIdentifier, ResourceManager};
 
 pub struct WgpuRenderer<'a> {
     context: Context<'a>,
     pipeline2d: Pipeline2D,
+    resource_manager: Arc<RwLock<ResourceManager>>,
 }
 
 impl<'a> WgpuRenderer<'a> {
-    pub(crate) async fn new(window: Arc<dyn Window>) -> WgpuRenderer<'a> {
+    pub(crate) async fn new(window: Arc<dyn Window>, resource_manager: Arc<RwLock<ResourceManager>>) -> WgpuRenderer<'a> {
         let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
             backends: wgpu::Backends::DX12 | wgpu::Backends::GL,
             ..Default::default()
@@ -40,6 +43,8 @@ impl<'a> WgpuRenderer<'a> {
 
         let default_texture = Texture::generate_default_white_texture(&device, &queue);
 
+        let resource_manager_copy = resource_manager.clone();
+        
         let context = Context {
             device,
             queue,
@@ -48,11 +53,13 @@ impl<'a> WgpuRenderer<'a> {
             surface_config,
             surface_clear_color: Color::new_from_rgba_u8(255, 255, 255, 255),
             is_srgba_format: false,
+            resource_manager: resource_manager_copy.clone(),
         };
 
         let pipeline2d = Pipeline2D::new(&context);
         
         WgpuRenderer {
+            resource_manager: resource_manager_copy,
             pipeline2d,
             context,
         }
@@ -95,8 +102,8 @@ impl Renderer for WgpuRenderer<'_> {
        self.pipeline2d.draw_rect(rectangle, fill_color);
     }
 
-    fn draw_image(&mut self, rectangle: Rectangle, path: &str) {
-        self.pipeline2d.draw_image(rectangle, path)
+    fn draw_image(&mut self, rectangle: Rectangle, resource_identifier: ResourceIdentifier) {
+        self.pipeline2d.draw_image(rectangle, resource_identifier)
     }
 
     fn submit(&mut self) {

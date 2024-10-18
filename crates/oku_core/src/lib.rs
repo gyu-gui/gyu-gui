@@ -19,7 +19,7 @@ use std::pin::Pin;
 use std::sync::Arc;
 use std::time;
 use tokio::io::join;
-use tokio::sync::mpsc;
+use tokio::sync::{mpsc, RwLock};
 use tracing::info;
 use user::reactive::element_id::reset_unique_element_id;
 use user::reactive::fiber_node::FiberNode;
@@ -67,8 +67,8 @@ struct App {
     mouse_position: (f32, f32),
     update_queue: VecDeque<UpdateQueueEntry>,
     user_state: HashMap<ComponentId, Box<GenericUserState>>,
-    resource_manager: ResourceManager,
-    winit_sender: mpsc::Sender<AppMessage>
+    resource_manager: Arc<RwLock<ResourceManager>>,
+    winit_sender: mpsc::Sender<AppMessage>,
 }
 
 pub struct RenderContext {
@@ -86,6 +86,7 @@ struct OkuState {
     winit_receiver: mpsc::Receiver<AppMessage>,
     app_sender: mpsc::Sender<AppMessage>,
     oku_options: OkuOptions,
+    resource_manager: Arc<RwLock<ResourceManager>>,
 }
 
 pub fn oku_main(application: ComponentSpecification) {
@@ -105,10 +106,12 @@ pub fn oku_main_with_options(application: ComponentSpecification, options: Optio
 
     let (app_sender, app_receiver) = mpsc::channel::<AppMessage>(100);
     let (winit_sender, winit_receiver) = mpsc::channel::<AppMessage>(100);
-
+    let resource_manager = Arc::new(RwLock::new(ResourceManager::new(app_sender.clone())));
+    
     let app_sender_copy = app_sender.clone();
+    let resource_manager_copy = resource_manager.clone();
     rt.spawn(async move {
-        async_main(application, app_receiver, winit_sender, app_sender_copy).await;
+        async_main(application, app_receiver, winit_sender, app_sender_copy, resource_manager_copy).await;
     });
 
     let mut app = OkuState {
@@ -121,6 +124,7 @@ pub fn oku_main_with_options(application: ComponentSpecification, options: Optio
         winit_receiver,
         app_sender: app_sender.clone(),
         oku_options: options.unwrap_or_default(),
+        resource_manager,
     };
 
     event_loop.run_app(&mut app).expect("run_app failed");
@@ -143,7 +147,7 @@ impl ApplicationHandler for OkuState {
 
         let renderer: Box<dyn Renderer + Send> = match self.oku_options.renderer {
             RendererType::Software => Box::new(SoftwareRenderer::new(window.clone())) as Box<dyn Renderer + Send>,
-            RendererType::Wgpu => Box::new(self.rt.block_on(async { WgpuRenderer::new(window.clone()).await })),
+            RendererType::Wgpu => Box::new(self.rt.block_on(async { WgpuRenderer::new(window.clone(), self.resource_manager.clone()).await })),
         };
 
         info!("Created renderer");
@@ -259,6 +263,7 @@ async fn async_main(
     mut app_receiver: mpsc::Receiver<AppMessage>,
     winit_sender: mpsc::Sender<AppMessage>,
     app_sender: mpsc::Sender<AppMessage>,
+    resource_manager: Arc<RwLock<ResourceManager>>,
 ) {
     let mut user_state = HashMap::new();
 
@@ -275,7 +280,7 @@ async fn async_main(
         mouse_position: (0.0, 0.0),
         update_queue: VecDeque::new(),
         user_state,
-        resource_manager: ResourceManager::new(app_sender.clone()),
+        resource_manager,
         winit_sender: winit_sender.clone(),
     });
 
@@ -506,7 +511,7 @@ async fn scan_view_for_resources(element: &dyn Element, component: &ComponentTre
         if let Some(element) = fiber_node.element {
             if element.name() == Image::name() {
                 let resource_identifier = element.as_any().downcast_ref::<Image>().unwrap().resource_identifier.clone();
-                 rm.add(resource_identifier).await;
+                 rm.write().await.add(resource_identifier).await;
             }
         }
     }

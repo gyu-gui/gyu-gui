@@ -1,9 +1,13 @@
+use std::sync::Arc;
+use tokio::sync::RwLock;
 use wgpu::{CompositeAlphaMode, PresentMode};
 use crate::engine::renderer::color::Color;
 use crate::engine::renderer::wgpu::texture::Texture;
+use crate::platform::resource_manager::ResourceManager;
 
 pub struct Context<'a> {
     pub(crate) device: wgpu::Device,
+    pub(crate) resource_manager: Arc<RwLock<ResourceManager>>,
     pub(crate) queue: wgpu::Queue,
     pub(crate) surface: wgpu::Surface<'a>,
     pub(crate) surface_clear_color: Color,

@@ -7,6 +7,7 @@ use crate::engine::renderer::wgpu::context::Context;
 use crate::engine::renderer::wgpu::texture::Texture;
 use crate::engine::renderer::wgpu::uniform::GlobalUniform;
 use crate::engine::renderer::wgpu::vertex::Vertex;
+use crate::platform::resource_manager::ResourceIdentifier;
 
 fn bind_group_from_2d_texture(
     device: &wgpu::Device,
@@ -30,7 +31,7 @@ fn bind_group_from_2d_texture(
 }
 
 pub struct RectangleBatch {
-    texture_path: Option<String>,
+    texture_path: Option<ResourceIdentifier>,
     rectangle_vertices: Vec<Vertex>,
     rectangle_indices: Vec<u32>,
 }
@@ -43,7 +44,7 @@ pub struct Pipeline2D {
     pub(crate) pipeline: wgpu::RenderPipeline,
     pub(crate) texture_bind_group_layout: wgpu::BindGroupLayout,
     pub(crate) rectangle_batch: Vec<RectangleBatch>,
-    pub(crate) textures: HashMap<String, Texture>,
+    pub(crate) textures: HashMap<ResourceIdentifier, Texture>,
 }
 
 impl Pipeline2D {
@@ -237,7 +238,7 @@ impl Pipeline2D {
         ]);
     }
 
-    pub fn draw_image(&mut self, rectangle: Rectangle, path: &str) {
+    pub fn draw_image(&mut self, rectangle: Rectangle, resource_identifier: ResourceIdentifier) {
         let x = rectangle.x;
         let y = rectangle.y;
         let width = rectangle.width;
@@ -253,7 +254,7 @@ impl Pipeline2D {
         // For now, always create a new batch when rendering an image
         let current_batch = {
             self.rectangle_batch.push(RectangleBatch {
-                texture_path: Some(path.to_string()),
+                texture_path: Some(resource_identifier),
                 rectangle_vertices: vec![],
                 rectangle_indices: vec![],
             });
@@ -319,18 +320,19 @@ impl Pipeline2D {
                         // If we were given an image path, but it isn't in our texture cache then try to load the image from the filesystem.
                         // Fallback to the default texture if that fails.
                         let mut rectangle_texture: &Texture = &context.default_texture;
-                        let image_reader = image::io::Reader::open(texture_path.clone());
-                        if image_reader.is_ok() {
-                            let image_reader = image_reader.unwrap();
-                            let decoded_image = image_reader.decode();
-
-                            if decoded_image.is_ok() {
-                                let decoded_image = decoded_image.unwrap();
-                                let texture = Texture::from_image(&context.device, &context.queue, &decoded_image, None);
+                        
+                        let resource_manager_locked = context.resource_manager.blocking_read();
+                        let resource_identifier = &batch.texture_path.clone().unwrap();
+                        let resource = resource_manager_locked.resources.get(resource_identifier);
+                        
+                        if let Some(resource) = resource {
+                            let data = resource.data();
+                            if let Some(data) = data {
+                                let texture = Texture::from_bytes(&context.device, &context.queue, &data, "");
                                 if let Some(texture) = texture {
                                     self.textures.insert(texture_path.clone(), texture);
                                     rectangle_texture = self.textures.get(&texture_path.clone()).unwrap();
-                                }
+                                }   
                             }
                         }
 

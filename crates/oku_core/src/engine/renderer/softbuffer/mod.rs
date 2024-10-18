@@ -5,6 +5,7 @@ use std::num::NonZeroU32;
 use std::sync::Arc;
 use tiny_skia::{ColorSpace, Paint, Pixmap, Rect, Transform};
 use winit::window::Window;
+use crate::platform::resource_manager::ResourceIdentifier;
 
 pub struct SoftwareRenderer {
     render_commands: Vec<RenderCommand>,
@@ -85,7 +86,7 @@ impl Renderer for SoftwareRenderer {
         self.render_commands.push(RenderCommand::DrawRect(rectangle, fill_color));
     }
 
-    fn draw_image(&mut self, _rectangle: Rectangle, _path: &str) {
+    fn draw_image(&mut self, _rectangle: Rectangle, resource_identifier: ResourceIdentifier) {
         todo!()
     }
 

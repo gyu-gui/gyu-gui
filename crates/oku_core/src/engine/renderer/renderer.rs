@@ -1,4 +1,5 @@
 use crate::engine::renderer::color::Color;
+use crate::platform::resource_manager::ResourceIdentifier;
 
 #[derive(Debug, Clone, Copy)]
 pub struct Rectangle {
@@ -39,7 +40,7 @@ pub trait Renderer {
     fn surface_set_clear_color(&mut self, color: Color);
 
     fn draw_rect(&mut self, rectangle: Rectangle, fill_color: Color);
-    fn draw_image(&mut self, rectangle: Rectangle, path: &str);
+    fn draw_image(&mut self, rectangle: Rectangle, resource_identifier: ResourceIdentifier);
 
     fn submit(&mut self);
 }
