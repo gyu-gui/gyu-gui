@@ -39,7 +39,7 @@ impl Component for Request {
             props: None,
             children: vec![
                 ComponentSpecification {
-                    component: Image::new(ResourceIdentifier::Url("https://picsum.photos/800".to_string())).into(),
+                    component: Image::new(ResourceIdentifier::Url("https://upload.wikimedia.org/wikipedia/commons/thumb/e/e6/Red_Panda_%2824986761703%29.jpg/440px-Red_Panda_%2824986761703%29.jpg".to_string())).into(),
                     key: Some("counter text".to_string()),
                     props: None,
                     children: vec![],
@@ -63,7 +63,7 @@ impl Component for Request {
         if source_element.as_deref() != Some("increment") {
             return UpdateResult::default();
         }
-
+/*
         let res: Option<PinnedFutureAny> = match message {
             Message::OkuMessage(OkuEvent::PointerButtonEvent(pointer_button)) => Some(Box::pin(async {
                 let res = reqwest::get("https://picsum.photos/800").await;
@@ -81,8 +81,9 @@ impl Component for Request {
             }
             _ => None,
         };
+*/
 
-        UpdateResult::new(false, res)
+        UpdateResult::new(false, None)
     }
 }
 fn main() {
