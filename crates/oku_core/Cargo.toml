@@ -15,6 +15,7 @@ taffy = { git = "https://github.com/DioxusLabs/taffy", rev = "c14a177f2ed3c2e388
 wgpu = { git = "https://github.com/gfx-rs/wgpu", rev = "2b15a2b24b69e105ebdbb5e8a859e2df75e441c1" }
 accesskit = "0.16.3"
 reqwest = "0.12.8"
+glyphon = {path = "./src/engine/renderer/wgpu/glyphon"}
 #accesskit_winit = { version = "0.18.0" }
 
 dyn-clone = "1.0.17"

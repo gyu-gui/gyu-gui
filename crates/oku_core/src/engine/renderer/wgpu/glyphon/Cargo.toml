@@ -1,0 +1,21 @@
+[package]
+name = "glyphon"
+description = "Fast, simple 2D text rendering for wgpu"
+version = "0.6.0"
+edition = "2021"
+homepage = "https://github.com/grovesNL/glyphon.git"
+repository = "https://github.com/grovesNL/glyphon"
+license = "MIT OR Apache-2.0 OR Zlib"
+
+[dependencies]
+wgpu = {  git = "https://github.com/gfx-rs/wgpu", rev = "2b15a2b24b69e105ebdbb5e8a859e2df75e441c1" , default-features = false, features = ["wgsl"] }
+etagere = "0.2.10"
+cosmic-text = { git = "https://github.com/pop-os/cosmic-text", rev = "4fe90bb6126c22f589b46768d7754d65ae300c5e" }
+lru = { version = "0.12.1", default-features = false }
+rustc-hash = "2.0"
+
+[dev-dependencies]
+winit = { git = "https://github.com/rust-windowing/winit", rev = "4e3165f3d81b1ee2771d517103c5883ffa2ee29f" }
+wgpu = { git = "https://github.com/gfx-rs/wgpu", rev = "2b15a2b24b69e105ebdbb5e8a859e2df75e441c1" }
+resvg = { version = "0.42", default-features = false }
+pollster = "0.3.0"
