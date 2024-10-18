@@ -53,12 +53,13 @@ pub trait Element: Any + StandardElementClone + Debug + Send + Sync {
             && y <= common_element_data.computed_y + common_element_data.computed_height
     }
 
-    fn id(&self) -> &Option<String> {
+    fn get_id(&self) -> &Option<String> {
         &self.common_element_data().id
     }
 
-    fn set_id(&mut self, id: Option<String>) {
+    fn id(&mut self, id: Option<String>) -> Box<dyn Element> {
         self.common_element_data_mut().id = id;
+        self.clone_box()
     }
 
     fn component_id(&self) -> u64 {

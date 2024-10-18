@@ -27,11 +27,6 @@ impl Component for Request {
         _children: Vec<ComponentSpecification>,
         id: ComponentId,
     ) -> ComponentSpecification {
-        let mut button = Container::new();
-        button.set_id(Some("increment".to_string()));
-
-        let mut button_label = Text::new("increment");
-        button_label.set_id(Some("increment".to_string()));
 
         ComponentSpecification {
             component: Container::new().into(),
@@ -45,11 +40,11 @@ impl Component for Request {
                     children: vec![],
                 },
                 ComponentSpecification {
-                    component: button.into(),
+                    component: Container::new().id(Some("increment".to_string())).into(),
                     key: Some("increment button".to_string()),
                     props: None,
                     children: vec![ComponentSpecification {
-                        component: button_label.into(),
+                        component: Text::new("increment").id(Some("increment".to_string())).into(),
                         key: Some("increment text".to_string()),
                         props: None,
                         children: vec![],

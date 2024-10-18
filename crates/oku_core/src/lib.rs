@@ -426,7 +426,7 @@ async fn on_pointer_button(
                 if in_bounds {
                     target_component_id = Some(element.component_id());
                     event_status = EventStatus::Propagating;
-                    target_element_id = element.id().clone();
+                    target_element_id = element.get_id().clone();
                     break;
                 }
             }

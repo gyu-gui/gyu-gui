@@ -24,11 +24,6 @@ impl Component for Accordion {
         _children: Vec<ComponentSpecification>,
         id: ComponentId,
     ) -> ComponentSpecification {
-        let mut accordion_header = Container::new();
-        accordion_header.set_id(Some("accordion_header".to_string()));
-
-        let mut accordion_header_text = Text::new("Accordion Example");
-        accordion_header_text.set_id(Some("accordion_header".to_string()));
 
         let accordion_content = if state.show_content {
             ComponentSpecification {
@@ -52,11 +47,11 @@ impl Component for Accordion {
             props: None,
             children: vec![
                 ComponentSpecification {
-                    component: accordion_header.into(),
+                    component: Container::new().id(Some("accordion_header".to_string())).into(),
                     key: Some("accordion_header".to_string()),
                     props: None,
                     children: vec![ComponentSpecification {
-                        component: accordion_header_text.into(),
+                        component: Text::new("Accordion Example").id(Some("accordion_header".to_string())).into(),
                         key: None,
                         props: None,
                         children: vec![],
