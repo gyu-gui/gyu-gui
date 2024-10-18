@@ -555,7 +555,8 @@ async fn on_request_redraw(app: &mut App) {
     root.draw(renderer, app.renderer_context.as_mut().unwrap());
     app.element_tree = Some(root);
 
-    renderer.submit();
+    let resource_manager = app.resource_manager.read().await;
+    renderer.submit(resource_manager);
 }
 
 fn layout(

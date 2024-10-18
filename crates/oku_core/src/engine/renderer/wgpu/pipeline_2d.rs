@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use tokio::sync::RwLockReadGuard;
 use wgpu::util::DeviceExt;
 use crate::engine::renderer::color::Color;
 use crate::engine::renderer::renderer::Rectangle;
@@ -7,7 +8,7 @@ use crate::engine::renderer::wgpu::context::Context;
 use crate::engine::renderer::wgpu::texture::Texture;
 use crate::engine::renderer::wgpu::uniform::GlobalUniform;
 use crate::engine::renderer::wgpu::vertex::Vertex;
-use crate::platform::resource_manager::ResourceIdentifier;
+use crate::platform::resource_manager::{ResourceIdentifier, ResourceManager};
 
 fn bind_group_from_2d_texture(
     device: &wgpu::Device,
@@ -295,7 +296,7 @@ impl Pipeline2D {
         ]);
     }
 
-    pub fn submit(&mut self, context: &mut Context) {
+    pub fn submit(&mut self, context: &mut Context<'_>, resource_manager: RwLockReadGuard<'_, ResourceManager>) {
         let mut encoder = context.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
             label: Some("Render Encoder"),
         });
@@ -321,9 +322,8 @@ impl Pipeline2D {
                         // Fallback to the default texture if that fails.
                         let mut rectangle_texture: &Texture = &context.default_texture;
                         
-                        let resource_manager_locked = context.resource_manager.blocking_read();
                         let resource_identifier = &batch.texture_path.clone().unwrap();
-                        let resource = resource_manager_locked.resources.get(resource_identifier);
+                        let resource = resource_manager.resources.get(resource_identifier);
                         
                         if let Some(resource) = resource {
                             let data = resource.data();

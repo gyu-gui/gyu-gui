@@ -10,7 +10,7 @@ use crate::engine::renderer::renderer::{Rectangle, Renderer};
 use glam;
 use image::{GenericImageView, ImageEncoder};
 use std::sync::Arc;
-use tokio::sync::RwLock;
+use tokio::sync::{RwLock, RwLockReadGuard};
 use wgpu::util::DeviceExt;
 use winit::window::Window;
 use crate::engine::renderer::wgpu::camera::Camera;
@@ -44,7 +44,7 @@ impl<'a> WgpuRenderer<'a> {
         let default_texture = Texture::generate_default_white_texture(&device, &queue);
 
         let resource_manager_copy = resource_manager.clone();
-        
+
         let context = Context {
             device,
             queue,
@@ -106,7 +106,7 @@ impl Renderer for WgpuRenderer<'_> {
         self.pipeline2d.draw_image(rectangle, resource_identifier)
     }
 
-    fn submit(&mut self) {
-        self.pipeline2d.submit(&mut self.context)
+    fn submit(&mut self, resource_manager: RwLockReadGuard<ResourceManager>) {
+        self.pipeline2d.submit(&mut self.context, resource_manager);
     }     
 }

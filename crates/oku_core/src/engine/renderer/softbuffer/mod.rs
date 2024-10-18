@@ -4,8 +4,9 @@ use softbuffer::Buffer;
 use std::num::NonZeroU32;
 use std::sync::Arc;
 use tiny_skia::{ColorSpace, Paint, Pixmap, Rect, Transform};
+use tokio::sync::RwLockReadGuard;
 use winit::window::Window;
-use crate::platform::resource_manager::ResourceIdentifier;
+use crate::platform::resource_manager::{ResourceIdentifier, ResourceManager};
 
 pub struct SoftwareRenderer {
     render_commands: Vec<RenderCommand>,
@@ -90,7 +91,7 @@ impl Renderer for SoftwareRenderer {
         todo!()
     }
 
-    fn submit(&mut self) {
+    fn submit(&mut self, resource_manager: RwLockReadGuard<ResourceManager>) {
         self.framebuffer.fill(tiny_skia::Color::from_rgba8(
             self.surface_clear_color.r_u8(),
             self.surface_clear_color.g_u8(),

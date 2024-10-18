@@ -1,5 +1,6 @@
+use tokio::sync::RwLockReadGuard;
 use crate::engine::renderer::color::Color;
-use crate::platform::resource_manager::ResourceIdentifier;
+use crate::platform::resource_manager::{ResourceIdentifier, ResourceManager};
 
 #[derive(Debug, Clone, Copy)]
 pub struct Rectangle {
@@ -42,5 +43,5 @@ pub trait Renderer {
     fn draw_rect(&mut self, rectangle: Rectangle, fill_color: Color);
     fn draw_image(&mut self, rectangle: Rectangle, resource_identifier: ResourceIdentifier);
 
-    fn submit(&mut self);
+    fn submit(&mut self, resource_manager: RwLockReadGuard<ResourceManager>);
 }
