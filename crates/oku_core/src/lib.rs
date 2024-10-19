@@ -525,6 +525,7 @@ async fn scan_view_for_resources(element: &dyn Element, component: &ComponentTre
 }
 
 async fn on_request_redraw(app: &mut App) {
+    let total_time_start = Instant::now();
     let window_element = Container::new().into();
     let old_component_tree = app.component_tree.as_ref();
     
@@ -568,17 +569,25 @@ async fn on_request_redraw(app: &mut App) {
     root.draw(renderer, app.renderer_context.as_mut().unwrap(), &mut taffy_tree, taffy_root);
     app.element_tree = Some(root);
 
+    let renderer_submit_start = Instant::now();
     let resource_manager = app.resource_manager.read().await;
     renderer.submit(resource_manager, &mut app.renderer_context.as_mut().unwrap(), &element_state);
+    let renderer_duration = renderer_submit_start.elapsed();
+    println!("Renderer Submit Time Taken: {:?} ms", renderer_duration.as_millis());
+
+
+    let total_duration = total_time_start.elapsed();
+    println!("Other: {:?} ms", (total_duration - renderer_duration - duration).as_millis());
+    println!("Total Time Taken: {:?} ms", total_duration.as_millis());
 }
 
-fn layout(
+fn layout<'a>(
     element_state: &mut HashMap<ComponentId, Box<GenericUserState>>,
     _window_width: f32,
     _window_height: f32,
     render_context: &mut RenderContext,
     root_element: &mut dyn Element,
-) -> (TaffyTree<LayoutContext>, NodeId) {
+) -> (TaffyTree<LayoutContext<'a>>, NodeId) {
     let mut taffy_tree: taffy::TaffyTree<LayoutContext> = taffy::TaffyTree::new();
     let root_node = root_element.compute_layout(&mut taffy_tree, &mut render_context.font_system);
 

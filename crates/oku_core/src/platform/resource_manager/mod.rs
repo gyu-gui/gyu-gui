@@ -36,9 +36,9 @@ impl ResourceManager {
         if !self.resources.contains_key(&resource) {
             let image = resource.fetch_resource_from_resource_identifier().await;
 
-            if let Some(imageResource) = image {
+            if let Some(image_resource) = image {
                 let resource_copy = resource.clone();
-                self.resources.insert(resource, imageResource);
+                self.resources.insert(resource, image_resource);
 
                 self.app_sender
                     .send(AppMessage::new(0, InternalMessage::ResourceEvent(ResourceEvent::Added(resource_copy))))

@@ -56,7 +56,11 @@ impl Element for Text {
         );
         renderer.draw_rect(bounding_rectangle, self.common_element_data.style.background);
 
-        renderer.draw_text(self.common_element_data.component_id, bounding_rectangle, self.common_element_data.style.color);
+        renderer.draw_text(
+            self.common_element_data.component_id,
+            bounding_rectangle,
+            self.common_element_data.style.color,
+        );
     }
 
     fn debug_draw(&mut self, _render_context: &mut RenderContext) {}
@@ -65,21 +69,22 @@ impl Element for Text {
         let font_size = self.common_element_data.style.font_size;
         let font_line_height = font_size * 1.2;
         let metrics = Metrics::new(font_size, font_line_height);
-        let mut attrs = Attrs::new();
+        let mut attributes = Attrs::new();
 
-        attrs.weight = cosmic_text::Weight(self.common_element_data.style.font_weight.0);
+        attributes.weight = cosmic_text::Weight(self.common_element_data.style.font_weight.0);
         let style: taffy::Style = self.common_element_data.style.into();
 
-        let leaf_start = Instant::now(); // Start measuring time
-        let tmp = taffy_tree
+        taffy_tree
             .new_leaf_with_context(
                 style,
-                LayoutContext::Text(TaffyTextContext::new(self.common_element_data.component_id, metrics, self.text.clone())),
+                LayoutContext::Text(TaffyTextContext::new(
+                    self.common_element_data.component_id,
+                    metrics,
+                    self.text.clone(),
+                    attributes
+                )),
             )
-            .unwrap();
-        let duration = leaf_start.elapsed(); // Get the elapsed time
-        println!("Leaf Time Taken: {:?} ms", duration.as_millis());
-        return tmp
+            .unwrap()
     }
 
     fn finalize_layout(&mut self, taffy_tree: &mut TaffyTree<LayoutContext>, root_node: NodeId, x: f32, y: f32) {

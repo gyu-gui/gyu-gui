@@ -36,3 +36,7 @@ path = "examples/accordion/accordion.rs"
 [[example]]
 name = "request"
 path = "examples/request/request.rs"
+
+[profile.dev]
+opt-level = 1
+codegen-units = 32

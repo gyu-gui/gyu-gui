@@ -4,39 +4,39 @@ use std::collections::HashMap;
 use std::time::Instant;
 use taffy::{AvailableSpace, Size};
 
-pub struct TaffyTextContext {
+pub struct TaffyTextContext<'a> {
     pub id: ComponentId,
     pub metrics: Metrics,
     pub text: String,
+    pub attributes: Attrs<'a>,
 }
 
-impl TaffyTextContext {
-    pub fn new(id: ComponentId, metrics: Metrics, text: String) -> Self {
-        Self { id, metrics, text }
+impl<'a> TaffyTextContext<'a> {
+    pub fn new(id: ComponentId, metrics: Metrics, text: String, attributes: Attrs<'a>) -> Self {
+        Self {
+            id,
+            metrics,
+            text,
+            attributes,
+        }
     }
 }
 
+// This should really be the internal stage of a text element.
 pub struct CosmicTextContent {
     pub id: ComponentId,
     pub buffer: Buffer,
     pub metrics: Metrics,
+    // Instead of storing the string, we can probably store it's hash.
     pub text: String,
 }
 
 impl CosmicTextContent {
-    pub(crate) fn new(
-        id: ComponentId,
-        metrics: Metrics,
-        text: &str,
-        attrs: Attrs,
-        font_system: &mut FontSystem,
-    ) -> Self {
-        //let mut buffer = Buffer::new(font_system, metrics);
-        //buffer.set_text(font_system, text, attrs, Shaping::Basic);
+    pub(crate) fn new(id: ComponentId, metrics: Metrics, text: &str, buffer: Buffer) -> Self {
         Self {
             id,
             metrics,
-            buffer: Buffer::new(font_system, metrics),
+            buffer,
             text: text.to_string(),
         }
     }
@@ -104,8 +104,8 @@ impl ImageContext {
     }
 }
 
-pub enum LayoutContext {
-    Text(TaffyTextContext),
+pub enum LayoutContext<'a> {
+    Text(TaffyTextContext<'a>),
     Image(ImageContext),
 }
 
@@ -130,27 +130,35 @@ pub fn measure_content(
             let cosmic_text_content: &mut CosmicTextContent = if let Some(cosmic_text_content) =
                 element_state.get_mut(&taffy_text_context.id).unwrap().downcast_mut()
             {
-                let x: &mut CosmicTextContent = cosmic_text_content;
-                if x.text != taffy_text_context.text {
-                    x.text = taffy_text_context.text.clone();
-                    x.buffer.set_text(font_system, &taffy_text_context.text, cosmic_text::Attrs::new(), Shaping::Advanced);
+                let cosmic_text_content: &mut CosmicTextContent = cosmic_text_content;
+                if cosmic_text_content.text != taffy_text_context.text {
+                    cosmic_text_content.text = taffy_text_context.text.clone();
+                    cosmic_text_content.buffer.set_text(
+                        font_system,
+                        &taffy_text_context.text,
+                        taffy_text_context.attributes,
+                        Shaping::Advanced,
+                    );
                 }
-
-                x
+                cosmic_text_content
             } else {
                 let mut buffer = Buffer::new(font_system, taffy_text_context.metrics);
-                let x = CosmicTextContent {
-                    id: taffy_text_context.id,
+                buffer.set_text(
+                    font_system,
+                    &taffy_text_context.text,
+                    taffy_text_context.attributes,
+                    Shaping::Advanced,
+                );
+
+                let cosmic_text_content = CosmicTextContent::new(
+                    taffy_text_context.id,
+                    taffy_text_context.metrics,
+                    &taffy_text_context.text,
                     buffer,
-                    metrics: taffy_text_context.metrics,
-                    text: taffy_text_context.text.clone(),
-                };
+                );
 
-                element_state.insert(taffy_text_context.id.clone(), Box::new(x));
-                let y: &mut CosmicTextContent = element_state.get_mut(&taffy_text_context.id).unwrap().downcast_mut().unwrap();
-
-                y.buffer.set_text(font_system, &taffy_text_context.text, cosmic_text::Attrs::new(), Shaping::Advanced);
-                y
+                element_state.insert(taffy_text_context.id.clone(), Box::new(cosmic_text_content));
+                element_state.get_mut(&taffy_text_context.id).unwrap().downcast_mut().unwrap()
             };
             cosmic_text_content.measure(known_dimensions, available_space, font_system)
         }

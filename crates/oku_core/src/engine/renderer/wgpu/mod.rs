@@ -29,8 +29,7 @@ use crate::user::elements::layout_context::LayoutContext;
 
 pub struct WgpuRenderer<'a> {
     context: Context<'a>,
-    pipeline2d: Pipeline2D,
-    resource_manager: Arc<RwLock<ResourceManager>>,
+    pipeline2d: Pipeline2D
 }
 
 impl<'a> WgpuRenderer<'a> {
@@ -77,7 +76,6 @@ impl<'a> WgpuRenderer<'a> {
         let pipeline2d = Pipeline2D::new(&context);
         
         WgpuRenderer {
-            resource_manager: resource_manager_copy,
             pipeline2d,
             context,
         }

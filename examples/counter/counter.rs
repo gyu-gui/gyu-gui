@@ -8,6 +8,7 @@ use oku::oku_main_with_options;
 use oku_core::engine::events::OkuEvent::PointerButtonEvent;
 use oku_core::user::components::component::{Component, ComponentId, UpdateResult};
 use oku_core::user::elements::element::Element;
+use oku_core::user::elements::style::FlexDirection;
 use oku_core::OkuOptions;
 use oku_core::RendererType::Wgpu;
 
@@ -21,7 +22,7 @@ impl Component for Counter {
         state: &Self,
         _props: Option<Props>,
         _children: Vec<ComponentSpecification>,
-        id: ComponentId,
+        _id: ComponentId,
     ) -> ComponentSpecification {
         let button = Container::new().id(Some("increment".to_string()));
 
@@ -40,7 +41,7 @@ Ut aliquam, odio ac placerat tempus, nunc felis ultrices tortor, vel elementum n
 Mauris risus felis, laoreet et augue vel, vulputate posuere tellus. Donec congue sapien sit amet dolor fringilla, a aliquet neque accumsan. Curabitur eu tempor ligula. Donec scelerisque ligula a risus fermentum pellentesque. Ut dictum vel augue rutrum vestibulum. Sed ut auctor arcu. Nullam lectus orci, lacinia et dictum ut, aliquet pretium neque. Nam ex sem, accumsan eget porttitor at, eleifend non lectus. Mauris viverra tortor auctor augue vestibulum, sit amet rutrum eros hendrerit. Quisque tincidunt mi id arcu molestie aliquam. Sed aliquam est purus. Vivamus porttitor varius finibus. Aliquam sollicitudin dui mauris, ut sodales orci efficitur nec. ");
 
         ComponentSpecification {
-            component: Container::new().into(),
+            component: Container::new().flex_direction(FlexDirection::Column).into(),
             key: None,
             props: None,
             children: vec![
@@ -61,25 +62,20 @@ Mauris risus felis, laoreet et augue vel, vulputate posuere tellus. Donec congue
                         children: vec![],
                     }],
                 },
-                big_text.into()
+                big_text.into(),
             ],
         }
     }
 
     fn update(state: &mut Self, _id: ComponentId, message: Message, source_element: Option<String>) -> UpdateResult {
-        println!("updating counter: Source Element: {:?}", source_element);
         if source_element.as_deref() != Some("increment") {
             return UpdateResult::default();
         }
 
-        println!("trying to incrementing");
         if let Message::OkuMessage(PointerButtonEvent(pointer_button)) = message {
-            println!("trying to incrementing 2");
-            println!("event {:?}", pointer_button);
             if pointer_button.button == ButtonSource::Mouse(MouseButton::Left)
                 && pointer_button.state == ElementState::Pressed
             {
-                println!("incrementing state {_id}");
                 state.count += 1
             }
         };
