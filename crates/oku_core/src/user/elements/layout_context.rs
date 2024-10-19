@@ -20,6 +20,7 @@ pub struct CosmicTextContent {
     pub id: ComponentId,
     pub buffer: Buffer,
     pub metrics: Metrics,
+    pub text: String,
 }
 
 impl CosmicTextContent {
@@ -36,6 +37,7 @@ impl CosmicTextContent {
             id,
             metrics,
             buffer: Buffer::new(font_system, metrics),
+            text: text.to_string(),
         }
     }
 
@@ -128,20 +130,28 @@ pub fn measure_content(
             let cosmic_text_content: &mut CosmicTextContent = if let Some(cosmic_text_content) =
                 element_state.get_mut(&taffy_text_context.id).unwrap().downcast_mut()
             {
-                cosmic_text_content
+                let x: &mut CosmicTextContent = cosmic_text_content;
+                if x.text != taffy_text_context.text {
+                    x.text = taffy_text_context.text.clone();
+                    x.buffer.set_text(font_system, &taffy_text_context.text, cosmic_text::Attrs::new(), Shaping::Advanced);
+                }
+
+                x
             } else {
                 let mut buffer = Buffer::new(font_system, taffy_text_context.metrics);
                 let x = CosmicTextContent {
                     id: taffy_text_context.id,
                     buffer,
                     metrics: taffy_text_context.metrics,
+                    text: taffy_text_context.text.clone(),
                 };
 
                 element_state.insert(taffy_text_context.id.clone(), Box::new(x));
-                element_state.get_mut(&taffy_text_context.id).unwrap().downcast_mut().unwrap()
-            };
+                let y: &mut CosmicTextContent = element_state.get_mut(&taffy_text_context.id).unwrap().downcast_mut().unwrap();
 
-            cosmic_text_content.buffer.set_text(font_system, &taffy_text_context.text, cosmic_text::Attrs::new(), Shaping::Advanced);
+                y.buffer.set_text(font_system, &taffy_text_context.text, cosmic_text::Attrs::new(), Shaping::Advanced);
+                y
+            };
             cosmic_text_content.measure(known_dimensions, available_space, font_system)
         }
         Some(LayoutContext::Image(image_context)) => image_context.measure(known_dimensions, available_space),
