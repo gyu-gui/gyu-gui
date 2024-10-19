@@ -1,25 +1,23 @@
-use std::any::Any;
+use crate::engine::renderer::color::Color;
+use crate::engine::renderer::renderer::{Rectangle, Renderer};
 use crate::user::elements::element::{CommonElementData, Element};
 use crate::user::elements::layout_context::{CosmicTextContent, LayoutContext};
 use crate::user::elements::style::{AlignItems, Display, FlexDirection, JustifyContent, Style, Unit, Weight};
-use crate::engine::renderer::color::Color;
-use crate::engine::renderer::renderer::{Rectangle, Renderer};
 use crate::RenderContext;
 use cosmic_text::{Attrs, Buffer, FontSystem, Metrics};
+use std::any::Any;
 use taffy::{NodeId, TaffyTree};
 
 #[derive(Clone, Default, Debug)]
 pub struct Text {
     text: String,
-    text_buffer: Option<Buffer>,
-    common_element_data: CommonElementData
+    common_element_data: CommonElementData,
 }
 
 impl Text {
     pub fn new(text: &str) -> Text {
         Text {
             text: text.to_string(),
-            text_buffer: None,
             common_element_data: Default::default(),
         }
     }
@@ -42,25 +40,22 @@ impl Element for Text {
         "Text"
     }
 
-    fn draw(&mut self, renderer: &mut Box<dyn Renderer + Send>, render_context: &mut RenderContext) {
-        if self.text_buffer.is_none() {
-            return;
-        }
-        
-        let text_buffer = self.text_buffer.as_mut().unwrap();
-
+    fn draw(
+        &mut self,
+        renderer: &mut Box<dyn Renderer + Send>,
+        render_context: &mut RenderContext,
+        taffy_tree: &mut TaffyTree<LayoutContext>,
+        root_node: NodeId,
+    ) {
         let bounding_rectangle = Rectangle::new(
-            self.common_element_data.computed_x + self.common_element_data.computed_padding[3] ,
+            self.common_element_data.computed_x + self.common_element_data.computed_padding[3],
             self.common_element_data.computed_y + self.common_element_data.computed_padding[0],
             self.common_element_data.computed_width,
-            self.common_element_data.computed_height
+            self.common_element_data.computed_height,
         );
-        renderer.draw_rect(
-            bounding_rectangle,
-            self.common_element_data.style.background,
-        );
+        renderer.draw_rect(bounding_rectangle, self.common_element_data.style.background);
 
-        renderer.draw_text(text_buffer.clone(), bounding_rectangle, self.common_element_data.style.color);
+        renderer.draw_text(root_node, bounding_rectangle, self.common_element_data.style.color);
     }
 
     fn debug_draw(&mut self, _render_context: &mut RenderContext) {}
@@ -86,17 +81,14 @@ impl Element for Text {
         let result = taffy_tree.layout(root_node).unwrap();
         let buffer = taffy_tree.get_node_context(root_node).unwrap();
 
-        if let LayoutContext::Text(cosmic_text) = buffer {
-            self.text_buffer = Option::from(cosmic_text.buffer.clone())
-        }
-
         self.common_element_data.computed_x = x + result.location.x;
         self.common_element_data.computed_y = y + result.location.y;
 
         self.common_element_data.computed_width = result.size.width;
         self.common_element_data.computed_height = result.size.height;
 
-        self.common_element_data.computed_padding = [result.padding.top, result.padding.right, result.padding.bottom, result.padding.left];
+        self.common_element_data.computed_padding =
+            [result.padding.top, result.padding.right, result.padding.bottom, result.padding.left];
     }
 
     fn as_any(&self) -> &dyn Any {

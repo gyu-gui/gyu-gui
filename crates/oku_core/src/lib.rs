@@ -18,6 +18,7 @@ use std::future::Future;
 use std::pin::Pin;
 use std::sync::Arc;
 use std::time;
+use taffy::{NodeId, TaffyTree};
 use tokio::io::join;
 use tokio::sync::{mpsc, RwLock};
 use tracing::info;
@@ -68,7 +69,7 @@ struct App {
     update_queue: VecDeque<UpdateQueueEntry>,
     user_state: HashMap<ComponentId, Box<GenericUserState>>,
     resource_manager: Arc<RwLock<ResourceManager>>,
-    winit_sender: mpsc::Sender<AppMessage>,
+    winit_sender: mpsc::Sender<AppMessage>
 }
 
 pub struct RenderContext {
@@ -554,12 +555,12 @@ async fn on_request_redraw(app: &mut App) {
         root.style_mut().height = Unit::Px(renderer.surface_height());
     }
 
-    layout(renderer.surface_width(), renderer.surface_height(), app.renderer_context.as_mut().unwrap(), root.as_mut());
-    root.draw(renderer, app.renderer_context.as_mut().unwrap());
+    let (mut taffy_tree, taffy_root) = layout(renderer.surface_width(), renderer.surface_height(), app.renderer_context.as_mut().unwrap(), root.as_mut());
+    root.draw(renderer, app.renderer_context.as_mut().unwrap(), &mut taffy_tree, taffy_root);
     app.element_tree = Some(root);
 
     let resource_manager = app.resource_manager.read().await;
-    renderer.submit(resource_manager, &mut app.renderer_context.as_mut().unwrap());
+    renderer.submit(resource_manager, &mut app.renderer_context.as_mut().unwrap(), &mut taffy_tree);
 }
 
 fn layout(
@@ -567,7 +568,7 @@ fn layout(
     _window_height: f32,
     render_context: &mut RenderContext,
     root_element: &mut dyn Element,
-) {
+) -> (TaffyTree<LayoutContext>, NodeId) {
     let mut taffy_tree: taffy::TaffyTree<LayoutContext> = taffy::TaffyTree::new();
     let root_node = root_element.compute_layout(&mut taffy_tree, &mut render_context.font_system);
 
@@ -582,4 +583,6 @@ fn layout(
         .unwrap();
 
     root_element.finalize_layout(&mut taffy_tree, root_node, 0.0, 0.0);
+    
+    (taffy_tree, root_node)
 }

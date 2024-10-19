@@ -4,11 +4,13 @@ use softbuffer::Buffer;
 use std::num::NonZeroU32;
 use std::sync::Arc;
 use cosmic_text::FontSystem;
+use taffy::TaffyTree;
 use tiny_skia::{ColorSpace, Paint, Pixmap, Rect, Transform};
 use tokio::sync::RwLockReadGuard;
 use winit::window::Window;
 use crate::platform::resource_manager::{ResourceIdentifier, ResourceManager};
 use crate::RenderContext;
+use crate::user::elements::layout_context::LayoutContext;
 
 pub struct SoftwareRenderer {
     render_commands: Vec<RenderCommand>,
@@ -89,7 +91,7 @@ impl Renderer for SoftwareRenderer {
         self.render_commands.push(RenderCommand::DrawRect(rectangle, fill_color));
     }
 
-    fn draw_text(&mut self, text_buffer: cosmic_text::Buffer,  rectangle: Rectangle, fill_color: Color) {
+    fn draw_text(&mut self, text_buffer: taffy::NodeId,  rectangle: Rectangle, fill_color: Color) {
         todo!()
     }
 
@@ -97,7 +99,7 @@ impl Renderer for SoftwareRenderer {
         todo!()
     }
 
-    fn submit(&mut self, resource_manager: RwLockReadGuard<ResourceManager>, render_context: &mut RenderContext) {
+    fn submit(&mut self, resource_manager: RwLockReadGuard<ResourceManager>, render_context: &mut RenderContext, taffy_tree: &TaffyTree<LayoutContext>) {
         self.framebuffer.fill(tiny_skia::Color::from_rgba8(
             self.surface_clear_color.r_u8(),
             self.surface_clear_color.g_u8(),

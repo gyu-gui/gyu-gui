@@ -170,7 +170,7 @@ for nothing could upset me today! Rejoice, for You-Know-Who has gone at
 last! Even Muggles like yourself should be celebrating, this happy,
 happy day!"
 
-                    "#).into(),
+                    "#.repeat(5).as_str()).into(),
                     key: Some("increment button".to_string()),
                     props: None,
                     children: vec![ComponentSpecification {

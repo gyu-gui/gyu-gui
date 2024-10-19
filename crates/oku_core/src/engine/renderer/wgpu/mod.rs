@@ -11,6 +11,7 @@ use glam;
 use image::{GenericImageView, ImageEncoder};
 use std::sync::Arc;
 use cosmic_text::{Buffer, FontSystem};
+use taffy::TaffyTree;
 use tokio::sync::{RwLock, RwLockReadGuard};
 use wgpu::MultisampleState;
 use wgpu::util::DeviceExt;
@@ -22,6 +23,7 @@ use crate::engine::renderer::wgpu::pipeline_2d::Pipeline2D;
 use crate::engine::renderer::wgpu::texture::Texture;
 use crate::platform::resource_manager::{ResourceIdentifier, ResourceManager};
 use crate::RenderContext;
+use crate::user::elements::layout_context::LayoutContext;
 
 pub struct WgpuRenderer<'a> {
     context: Context<'a>,
@@ -116,8 +118,8 @@ impl Renderer for WgpuRenderer<'_> {
        self.pipeline2d.draw_rect(rectangle, fill_color);
     }
 
-    fn draw_text(&mut self, text_buffer: Buffer, rectangle: Rectangle, fill_color: Color) {
-        self.pipeline2d.draw_text(text_buffer, rectangle, fill_color);
+    fn draw_text(&mut self, node_id: taffy::NodeId, rectangle: Rectangle, fill_color: Color) {
+        self.pipeline2d.draw_text(node_id, rectangle, fill_color);
 
     }
 
@@ -125,7 +127,7 @@ impl Renderer for WgpuRenderer<'_> {
         self.pipeline2d.draw_image(rectangle, resource_identifier)
     }
 
-    fn submit(&mut self, resource_manager: RwLockReadGuard<ResourceManager>, render_context: &mut RenderContext) {
-        self.pipeline2d.submit(&mut self.context, resource_manager, render_context);
+    fn submit(&mut self, resource_manager: RwLockReadGuard<ResourceManager>, render_context: &mut RenderContext, taffy_tree: &TaffyTree<LayoutContext>) {
+        self.pipeline2d.submit(&mut self.context, resource_manager, render_context, taffy_tree);
     }     
 }

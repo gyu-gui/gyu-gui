@@ -33,7 +33,7 @@ impl Element for Empty {
         "Empty"
     }
 
-    fn draw(&mut self, _renderer: &mut Box<dyn Renderer + Send>, _render_context: &mut RenderContext) {}
+    fn draw(&mut self, _renderer: &mut Box<dyn Renderer + Send>, _render_context: &mut RenderContext, taffy_tree: &mut TaffyTree<LayoutContext>, root_node: NodeId) {}
 
     fn debug_draw(&mut self, _render_context: &mut RenderContext) {}
 

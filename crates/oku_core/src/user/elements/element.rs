@@ -72,7 +72,7 @@ pub trait Element: Any + StandardElementClone + Debug + Send + Sync {
 
     fn name(&self) -> &'static str;
 
-    fn draw(&mut self, renderer: &mut Box<dyn Renderer + Send>, render_context: &mut RenderContext);
+    fn draw(&mut self, renderer: &mut Box<dyn Renderer + Send>, render_context: &mut RenderContext, taffy_tree: &mut TaffyTree<LayoutContext>, root_node: NodeId);
 
     fn debug_draw(&mut self, render_context: &mut RenderContext);
 

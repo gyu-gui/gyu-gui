@@ -3,6 +3,7 @@ use cosmic_text::Family;
 use cosmic_text::Attrs;
 use std::collections::HashMap;
 use cosmic_text::{Buffer, Metrics};
+use taffy::TaffyTree;
 use tokio::sync::RwLockReadGuard;
 use wgpu::util::DeviceExt;
 use glyphon::{TextArea, TextBounds};
@@ -15,6 +16,7 @@ use crate::engine::renderer::wgpu::uniform::GlobalUniform;
 use crate::engine::renderer::wgpu::vertex::Vertex;
 use crate::platform::resource_manager::{ResourceIdentifier, ResourceManager};
 use crate::RenderContext;
+use crate::user::elements::layout_context::LayoutContext;
 
 fn bind_group_from_2d_texture(
     device: &wgpu::Device,
@@ -44,7 +46,7 @@ pub struct RectangleBatch {
 }
 
 pub struct TextRenderInfo {
-    buffer: Buffer,
+    taffy_node: taffy::NodeId,
     rectangle: Rectangle,
     fill_color: Color,
 }
@@ -253,9 +255,9 @@ impl Pipeline2D {
         ]);
     }
 
-    pub(crate) fn draw_text(&mut self, text_buffer: Buffer, rectangle: Rectangle, fill_color: Color) {
+    pub(crate) fn draw_text(&mut self, text_buffer: taffy::NodeId, rectangle: Rectangle, fill_color: Color) {
         self.text_areas.push(TextRenderInfo {
-            buffer: text_buffer,
+            taffy_node: text_buffer,
             rectangle,
             fill_color,
         });
@@ -318,7 +320,7 @@ impl Pipeline2D {
         ]);
     }
 
-    pub fn submit(&mut self, context: &mut Context<'_>, resource_manager: RwLockReadGuard<'_, ResourceManager>, render_context: &mut RenderContext) {
+    pub fn submit(&mut self, context: &mut Context<'_>, resource_manager: RwLockReadGuard<'_, ResourceManager>, render_context: &mut RenderContext, taffy_tree: &TaffyTree<LayoutContext>) {
         let mut encoder = context.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
             label: Some("Render Encoder"),
         });
@@ -397,27 +399,31 @@ impl Pipeline2D {
             let mut text_areas: Vec<TextArea> = Vec::new();
 
             for text_area in self.text_areas.iter() {
-                text_areas.push(
-                    TextArea {
-                        buffer: &text_area.buffer,
-                        left: text_area.rectangle.x,
-                        top: text_area.rectangle.y,
-                        scale: 1.0,
-                        bounds: TextBounds {
-                            left: text_area.rectangle.x as i32,
-                            top: text_area.rectangle.y as i32,
-                            right: (text_area.rectangle.x + text_area.rectangle.width) as i32,
-                            bottom: (text_area.rectangle.y + text_area.rectangle.height) as i32,
-                        },
-                        default_color: glyphon::Color::rgba(
-                            text_area.fill_color.r_u8(),
-                            text_area.fill_color.g_u8(),
-                            text_area.fill_color.b_u8(),
-                            text_area.fill_color.a_u8()
-                        ),
-                        custom_glyphs: &[],
-                    }
-                );
+                if let Some(LayoutContext::Text(cosmic_text)) = taffy_tree.get_node_context(text_area.taffy_node) {
+                    let text_buffer = &cosmic_text.buffer;
+
+                    text_areas.push(
+                        TextArea {
+                            buffer: text_buffer,
+                            left: text_area.rectangle.x,
+                            top: text_area.rectangle.y,
+                            scale: 1.0,
+                            bounds: TextBounds {
+                                left: text_area.rectangle.x as i32,
+                                top: text_area.rectangle.y as i32,
+                                right: (text_area.rectangle.x + text_area.rectangle.width) as i32,
+                                bottom: (text_area.rectangle.y + text_area.rectangle.height) as i32,
+                            },
+                            default_color: glyphon::Color::rgba(
+                                text_area.fill_color.r_u8(),
+                                text_area.fill_color.g_u8(),
+                                text_area.fill_color.b_u8(),
+                                text_area.fill_color.a_u8()
+                            ),
+                            custom_glyphs: &[],
+                        }
+                    );
+                }
             }
 
             context.glyphon_text_renderer

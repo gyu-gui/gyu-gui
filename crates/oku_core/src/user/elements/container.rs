@@ -34,14 +34,15 @@ impl Element for Container {
         "Container"
     }
 
-    fn draw(&mut self, renderer: &mut Box<dyn Renderer + Send>, render_context: &mut RenderContext) {
+    fn draw(&mut self, renderer: &mut Box<dyn Renderer + Send>, render_context: &mut RenderContext, taffy_tree: &mut TaffyTree<LayoutContext>, root_node: NodeId) {
         renderer.draw_rect(
             Rectangle::new(self.common_element_data.computed_x, self.common_element_data.computed_y, self.common_element_data.computed_width, self.common_element_data.computed_height),
             self.common_element_data.style.background,
         );
 
-        for child in self.common_element_data.children.iter_mut() {
-            child.draw(renderer, render_context);
+        for (index, child) in self.common_element_data.children.iter_mut().enumerate() {
+            let child2 = taffy_tree.child_at_index(root_node, index).unwrap();
+            child.draw(renderer, render_context, taffy_tree, child2);
         }
     }
 

@@ -41,7 +41,7 @@ impl Element for Image {
         "Image"
     }
 
-    fn draw(&mut self, renderer: &mut Box<dyn Renderer + Send>, _render_context: &mut RenderContext) {
+    fn draw(&mut self, renderer: &mut Box<dyn Renderer + Send>, _render_context: &mut RenderContext, taffy_tree: &mut TaffyTree<LayoutContext>, root_node: NodeId) {
         renderer.draw_image(
             Rectangle::new(self.common_element_data.computed_x, self.common_element_data.computed_y, self.common_element_data.computed_width, self.common_element_data.computed_height),
             self.resource_identifier.clone(),
