@@ -45,7 +45,7 @@ int main() {
     ComponentSpecification spec = component(comp_data);
 
     OkuOptions options;
-    options.renderer = 2;
+    options.renderer = Vello;
     options.window_title = "Hello Oku C";
 
     oku_main(spec, &options);
